@@ -10,7 +10,7 @@ function repairMode(type){
   })[type] || 'ANALYST_REVIEW';
 }
 
-export function detectReasoningDrift(state) {
+export function detectReasoningDrift(state = {}) {
   const findings = [];
   const evidence = state.evidence || [];
   const sources = new Map((state.sources || []).map(s => [s.id, s]));
@@ -41,7 +41,7 @@ export function detectReasoningDrift(state) {
     const linked = [...support, ...opposing];
     const independentGroups = new Set(linked.map(e => sources.get(e.sourceId)?.independenceGroup).filter(Boolean));
     const evidenceStrength = support.reduce((sum,e)=>sum+(Number(e.confidence)||0),0);
-    const oppositionStrength = opposing.reduce((sum,e)=>sum+(Number(e.confidence)||0),0);
+    const opposingStrength = opposing.reduce((sum,e)=>sum+(Number(e.confidence)||0),0);
     if (h.confidence >= .8 && support.length === 0) findings.push({ type:'CONFIDENCE_DRIFT', severity:'high', hypothesisId:h.id, repairMode:repairMode('CONFIDENCE_DRIFT'),
       message:'Hypothesis confidence is high without explicit supporting evidence.' });
     if (h.confidence >= .8 && opposing.length >= support.length && opposing.length > 0) findings.push({ type:'CONFIDENCE_DRIFT', severity:'high', hypothesisId:h.id, repairMode:repairMode('CONFIDENCE_DRIFT'),
@@ -61,7 +61,7 @@ export function detectReasoningDrift(state) {
   for (const items of byCase.values()) {
     for (let i=0;i<items.length;i++) for (let j=i+1;j<items.length;j++) {
       const a=items[i], b=items[j];
-      const ac=a.claim.trim().toLowerCase(), bc=b.claim.trim().toLowerCase();
+      const ac=String(a.claim||'').trim().toLowerCase(), bc=String(b.claim||'').trim().toLowerCase();
       if (!ac || !bc || ac===bc) continue;
       const sameFrame = ac.replace(NEGATIVE,'').replace(/\s+/g,' ').trim() === bc.replace(NEGATIVE,'').replace(/\s+/g,' ').trim();
       if (sameFrame && NEGATIVE.test(ac) !== NEGATIVE.test(bc) && POSITIVE.test(ac+bc)) {
@@ -73,7 +73,7 @@ export function detectReasoningDrift(state) {
   return findings;
 }
 
-export function buildShadowInvestigation(state) {
+export function buildShadowInvestigation(state = {}) {
   const findings = detectReasoningDrift(state);
   const hypotheses = state.hypotheses || [];
   const gaps = hypotheses.filter(h => !(h.evidenceAgainst || []).length).map(h => ({ hypothesisId:h.id,
