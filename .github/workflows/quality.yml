@@ -21,21 +21,9 @@ jobs:
         with:
           node-version: 24
       - name: Validate JavaScript syntax
-        run: |
-          node --check src/core/model.js
-          node --check src/core/store.js
-          node --check src/core/engine.js
-          node --check src/core/drift.js
-          node --check src/core/assurance.js
-          node --check src/core/memory.js
-          node --check src/core/decision.js
-          node --check src/core/report.js
-          node --check src/core/validation.js
-          node --check src/core/temporal.js
-          node --check src/app.js
-          node --check server/index.mjs
+        run: npm run check
       - name: Run behavioral tests
-        run: node --test tests/*.test.mjs
+        run: npm test
       - name: Validate required architecture files
         run: |
           test -f index.html
@@ -43,6 +31,7 @@ jobs:
           test -f ARCHITECTURE.md
           test -f ENTERPRISE_READINESS.md
           test -f SECURITY.md
+          test -f package.json
           test -f server/index.mjs
           test -f server/README.md
           test -f src/core/model.js
@@ -55,6 +44,7 @@ jobs:
           test -f src/core/report.js
           test -f src/core/validation.js
           test -f src/core/temporal.js
+          test -f src/core/privacy.js
           test -f tests/drift.test.mjs
           test -f tests/temporal.test.mjs
           grep -q 'type="module" src="./src/app.js"' index.html
