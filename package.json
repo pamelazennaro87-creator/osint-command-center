@@ -6,7 +6,7 @@
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": {
-    "check": "node --check src/core/model.js && node --check src/core/store.js && node --check src/core/engine.js && node --check src/core/drift.js && node --check src/core/assurance.js && node --check src/core/memory.js && node --check src/core/decision.js && node --check src/core/report.js && node --check src/core/validation.js && node --check src/core/temporal.js && node --check src/core/privacy.js && node --check src/app.js && node --check server/index.mjs",
+    "check": "node --check src/core/model.js && node --check src/core/store.js && node --check src/core/engine.js && node --check src/core/drift.js && node --check src/core/assurance.js && node --check src/core/memory.js && node --check src/core/decision.js && node --check src/core/report.js && node --check src/core/validation.js && node --check src/core/temporal.js && node --check src/core/privacy.js && node --check src/core/intelligence.js && node --check src/app.js && node --check src/super-ui.js && node --check server/index.mjs",
     "test": "node --test tests/*.test.mjs",
     "test:security": "node --test tests/server.test.mjs",
     "verify": "npm run check && npm test && npm run test:security"
