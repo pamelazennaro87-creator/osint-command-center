@@ -1,97 +1,66 @@
-import { createCase, createEvidence, createSource, createEntity, createHypothesis, createDecision } from './core/model.js';
+import { createCase, createEvidence, createSource, createEntity, createHypothesis, createDecision, createRelationship } from './core/model.js';
 import { loadState, saveState, addRecord } from './core/store.js';
 import { calculateMetrics, contradictionTriage } from './core/engine.js';
 import { buildShadowInvestigation } from './core/drift.js';
-import { evaluateDecision, transitionDecision } from './core/decision.js';
+import { evaluateDecision } from './core/decision.js';
+import { transitionDecision } from './core/decision.js';
 import { extractInstitutionalMemory, memorySummary, queryInstitutionalMemory } from './core/memory.js';
 import { recommendPreInvestigationChecks, buildProfessionalReport, reportFilename } from './core/report.js';
 import { validateState } from './core/validation.js';
 
 const $ = id => document.getElementById(id);
 const state = loadState();
-
-function seed() {
-  if (state.cases.length) return;
-  const c = createCase({ title: 'Entity relationship review', objective: 'Determine whether observed relationships are supported by independent evidence.', priority: 'high' });
-  const s = createSource({ name: 'Demo public source', type: 'web', reliability: .7, independenceGroup: 'demo-1' });
-  const e = createEvidence({ caseId: c.id, sourceId: s.id, title: 'Initial observation', claim: 'Observed relationship requires verification.', status: 'UNKNOWN', confidence: .4, aiAssisted: false });
-  state.cases.push(c); state.sources.push(s); state.evidence.push(e);
-  state.entities.push(createEntity({ name: 'Example entity A', type: 'person' }));
-  state.entities.push(createEntity({ name: 'Example organization B', type: 'organization' }));
-  state.hypotheses.push(createHypothesis({ caseId: c.id, statement: 'The observed relationship is genuine.', evidenceFor: [], evidenceAgainst: [], confidence: .4, falsifier: 'Independent evidence disproves the relationship.' }));
-  saveState(state);
-}
-
-function render() {
-  const m = calculateMetrics(state);
-  const map = { cases:m.cases, evidence:m.evidence, hypotheses:m.hypotheses, contradictions:m.contradictions };
-  Object.entries(map).forEach(([key,value]) => { const el=$(`metric-${key}`); if(el) el.textContent=String(value).padStart(2,'0'); });
-  ['verifiedPct','corroboratedPct','aiPct'].forEach(k=>{const el=$(k); if(el){el.textContent=`${m[k]}%`; const bar=$(k+'Bar'); if(bar)bar.style.width=`${m[k]}%`;}});
-  const list=$('caseList');
-  if(list) list.innerHTML = state.cases.slice(-6).reverse().map(c=>`<div class="row"><div><strong>${escapeHtml(c.title)}</strong><small>${escapeHtml(c.id)} · ${escapeHtml(c.status)}</small></div><span class="tag ${c.priority==='high'?'bad':c.priority==='low'?'ok':'warn'}">${escapeHtml(c.priority.toUpperCase())}</span></div>`).join('') || '<div class="row"><small>No investigations yet.</small></div>';
-  renderChallenge(); renderDecisionIntegrity(); renderMemory(); renderPreInvestigation();
-}
-function renderChallenge(){
-  const shadow=buildShadowInvestigation(loadState());
-  const status=$('challengeStatus'); if(status){ status.textContent=shadow.integrityStatus.replace('_',' '); status.className=`tag ${shadow.integrityStatus==='HIGH_RISK'?'bad':shadow.integrityStatus==='REVIEW'?'warn':'ok'}`; }
-  const high=$('challengeHigh'), medium=$('challengeMedium'), total=$('challengeTotal');
-  if(high) high.textContent=String(shadow.highRiskCount); if(medium) medium.textContent=String(shadow.mediumRiskCount); if(total) total.textContent=String(shadow.findingCount+shadow.falsificationGaps.length);
-  const panel=$('challengeList'); if(!panel) return;
-  const items=shadow.findings.slice(0,8); const gaps=shadow.falsificationGaps.slice(0,4);
-  if(!items.length && !gaps.length){ panel.innerHTML='<div class="row"><div><strong>No challenge signals</strong><small>The shadow investigation found no current guardrail breach. Absence of a signal is not proof of correctness.</small></div><span class="tag ok">CLEAR</span></div>'; return; }
-  const rows=[...items.map(f=>`<div class="row"><div><strong>${escapeHtml(formatType(f.type))}</strong><small>${escapeHtml(f.message)} · Repair: ${escapeHtml(f.repairMode||'ANALYST_REVIEW')}</small></div><span class="tag ${f.severity==='high'?'bad':f.severity==='medium'?'warn':'ok'}">${escapeHtml((f.severity||'review').toUpperCase())}</span></div>`),...gaps.map(g=>`<div class="row"><div><strong>FALSIFICATION GAP</strong><small>${escapeHtml(g.message)} · Repair: ${escapeHtml(g.repairMode)}</small></div><span class="tag warn">CHALLENGE</span></div>` )];
-  panel.innerHTML=rows.join('');
-}
-function renderDecisionIntegrity(){
-  const panel=$('decisionIntegrityList'); if(!panel) return;
-  const decisions=Array.isArray(state.decisions)?state.decisions:[];
-  if(!decisions.length){ panel.innerHTML='<div class="row"><div><strong>No decision submitted</strong><small>Decision Integrity Gate activates when a decision is linked to hypotheses and evidence.</small></div><span class="tag warn">STANDBY</span></div>'; return; }
-  const decision=decisions[decisions.length-1]; const result=evaluateDecision(decision,state);
-  const cls=result.status==='PASS'?'ok':result.status==='REVIEW'?'warn':'bad';
-  panel.innerHTML=`<div class="row"><div><strong>${escapeHtml(decision.title)}</strong><small>${escapeHtml(result.status)} · score ${result.score}/100 · ${result.blockingReasons.length} blocker(s), ${result.warnings.length} warning(s)</small></div><span class="tag ${cls}">${escapeHtml(result.status)}</span></div><div class="row"><div><strong>Approval eligibility</strong><small>${result.approvalEligible?'All integrity checks pass.':'Approval is not currently permitted.'}</small></div><span class="tag ${result.approvalEligible?'ok':'bad'}">${result.approvalEligible?'ELIGIBLE':'BLOCKED'}</span></div>`;
-}
-function renderMemory(){
-  const summary=memorySummary(loadState());
-  const total=$('memoryTotal'), recurring=$('memoryRecurring');
-  if(total) total.textContent=String(summary.total); if(recurring) recurring.textContent=String(summary.recurring);
-  const panel=$('memoryList'); if(!panel) return;
-  const memory=extractInstitutionalMemory(loadState()).slice(0,6);
-  if(!memory.length){ panel.innerHTML='<div class="row"><div><strong>No reusable patterns yet</strong><small>Institutional Memory is derived from observed failures, repairs, contradictions and falsifiers.</small></div><span class="tag warn">EMPTY</span></div>'; return; }
-  panel.innerHTML=memory.map(item=>`<div class="row"><div><strong>${escapeHtml(formatType(item.type))}</strong><small>${escapeHtml(item.pattern)} · ${item.caseCount} case(s) · ${item.occurrences} occurrence(s)</small></div><span class="tag ${item.caseCount>1?'ok':'warn'}">${item.caseCount>1?'RECURRING':'NEW'}</span></div>`).join('');
-}
-function renderPreInvestigation(){
-  const panel=$('preInvestigationList'); if(!panel) return;
-  const current=loadState(); const latest=current.cases?.[current.cases.length-1]||{}; const brief=recommendPreInvestigationChecks(latest,current);
-  panel.innerHTML=brief.recommendedChecks.slice(0,5).map(c=>`<div class="row"><div><strong>${escapeHtml(c.title)}</strong><small>${escapeHtml(c.reason)}</small></div><span class="tag ${brief.memoryDerived?'ok':'warn'}">${brief.memoryDerived?'MEMORY':'BASELINE'}</span></div>`).join('') || '<div class="row"><small>No pre-investigation checks generated.</small></div>';
-}
-function formatType(v){return String(v||'signal').replaceAll('_',' ');}
-function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function refresh(){ Object.assign(state,loadState()); render(); }
-function downloadText(filename,text,type='text/plain'){ const blob=new Blob([text],{type}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); }
-function createProfessionalReport(){ const report=buildProfessionalReport(loadState()); downloadText(reportFilename(loadState()),report,'text/html'); }
-
-window.osintEnterprise = {
-  getState: () => structuredClone(loadState()),
-  validate: () => validateState(loadState()),
-  createCase: input => { const r=addRecord('cases',createCase(input)); refresh(); return r; },
-  createEvidence: input => { const r=addRecord('evidence',createEvidence(input)); refresh(); return r; },
-  createDecision: input => { const r=addRecord('decisions',createDecision(input)); refresh(); return r; },
-  evaluateDecision: decisionOrId => { const current=loadState(); const decision=typeof decisionOrId==='string' ? current.decisions?.find(d=>d.id===decisionOrId) : decisionOrId; if(!decision) throw new Error('Decision not found.'); return evaluateDecision(decision,current); },
-  transitionDecision: (decisionOrId, nextState) => { const current=loadState(); const decision=typeof decisionOrId==='string' ? current.decisions?.find(d=>d.id===decisionOrId) : decisionOrId; if(!decision) throw new Error('Decision not found.'); const transitioned=transitionDecision(decision,nextState,current); if(typeof decisionOrId==='string'){ const index=current.decisions.findIndex(d=>d.id===decision.id); current.decisions[index]=transitioned; saveState(current); refresh(); } return transitioned; },
-  institutionalMemory: () => extractInstitutionalMemory(loadState()),
-  queryInstitutionalMemory: query => queryInstitutionalMemory(loadState(),query),
-  memorySummary: () => memorySummary(loadState()),
-  preInvestigationBrief: caseInput => recommendPreInvestigationChecks(caseInput||{},loadState()),
-  createProfessionalReport: () => { createProfessionalReport(); return reportFilename(loadState()); },
-  triage: () => { const findings=contradictionTriage(loadState()); findings.forEach(f=>addRecord('contradictions',f)); refresh(); return findings; },
-  shadowInvestigation: () => buildShadowInvestigation(loadState()),
-  exportCase: () => downloadText('osint-enterprise-export.json',JSON.stringify(loadState(),null,2),'application/json')
+const VIEW_META = {
+  command:['Command Center','Evidence, uncertainty and competing explanations in one decision layer.'],
+  cases:['Cases','Create and inspect investigations stored in this browser.'],
+  evidence:['Evidence','Record claims with source provenance and uncertainty status.'],
+  entities:['Entities & Graph','Track people, organizations, assets and relationships.'],
+  hypotheses:['Hypotheses','Keep competing explanations explicit and falsifiable.'],
+  contradictions:['Contradictions','Review conflicts and analytical challenge signals.'],
+  reports:['Reports','Export a professional assessment from the current state.'],
+  governance:['Governance','Validate state and inspect the integrity boundary of this prototype.']
 };
 
-seed(); render();
-
-$('create')?.addEventListener('click',()=>{ const title=$('caseName')?.value.trim(); if(!title)return; window.osintEnterprise.createCase({title, objective:'Investigation objective pending analyst definition.', priority:'medium'}); $('modal')?.classList.remove('open'); $('caseName').value=''; });
-$('audit')?.addEventListener('click',()=>{ const findings=window.osintEnterprise.triage(); const shadow=window.osintEnterprise.shadowInvestigation(); renderChallenge(); alert(`${findings.length} contradiction candidate(s) generated. Shadow investigation found ${shadow.findingCount} reasoning-drift signal(s).`); });
-$('challenge')?.addEventListener('click',()=>{ const shadow=window.osintEnterprise.shadowInvestigation(); renderChallenge(); $('challengePanel')?.scrollIntoView({behavior:'smooth',block:'start'}); if(!shadow.findingCount && !shadow.falsificationGaps.length) alert('Shadow investigation clear: no current drift signal detected. This is not proof of correctness.'); });
-$('report')?.addEventListener('click',()=>window.osintEnterprise.createProfessionalReport());
-$('export')?.addEventListener('click',()=>window.osintEnterprise.exportCase());
+function seed(){
+  if(state.cases.length)return;
+  const c=createCase({title:'Entity relationship review',objective:'Determine whether observed relationships are supported by independent evidence.',priority:'high'});
+  const s=createSource({name:'Demo public source',type:'web',reliability:.7,independenceGroup:'demo-1'});
+  const e=createEvidence({caseId:c.id,sourceId:s.id,title:'Initial observation',claim:'Observed relationship requires verification.',status:'UNKNOWN',confidence:.4,aiAssisted:false});
+  state.cases.push(c);state.sources.push(s);state.evidence.push(e);
+  const a=createEntity({name:'Example entity A',type:'person'}),b=createEntity({name:'Example organization B',type:'organization'});
+  state.entities.push(a,b);
+  state.hypotheses.push(createHypothesis({caseId:c.id,statement:'The observed relationship is genuine.',falsifier:'Independent evidence disproves the relationship.',confidence:.4}));
+  state.relationships=state.relationships||[]; state.relationships.push(createRelationship({caseId:c.id,fromEntityId:a.id,toEntityId:b.id,type:'associated_with',evidenceIds:[e.id],confidence:.3}));
+  saveState(state);
+}
+function render(){
+  const m=calculateMetrics(state),map={cases:m.cases,evidence:m.evidence,hypotheses:m.hypotheses,contradictions:m.contradictions};
+  Object.entries(map).forEach(([k,v])=>{const el=$(`metric-${k}`);if(el)el.textContent=String(v).padStart(2,'0')});
+  ['verifiedPct','corroboratedPct','aiPct'].forEach(k=>{const el=$(k);if(el){el.textContent=`${m[k]}%`;const bar=$(k+'Bar');if(bar)bar.style.width=`${m[k]}%`}});
+  const list=$('caseList');if(list)list.innerHTML=state.cases.slice(-6).reverse().map(c=>`<div class="row"><div><strong>${esc(c.title)}</strong><small>${esc(c.id)} · ${esc(c.status)}</small></div><span class="tag ${c.priority==='high'?'bad':c.priority==='low'?'ok':'warn'}">${esc(c.priority.toUpperCase())}</span></div>`).join('')||'<div class="row"><small>No investigations yet.</small></div>';
+  renderChallenge();renderDecisionIntegrity();renderMemory();renderPreInvestigation();renderWorkspaceLists();
+}
+function renderChallenge(){const shadow=buildShadowInvestigation(loadState()),status=$('challengeStatus');if(status){status.textContent=shadow.integrityStatus.replace('_',' ');status.className=`tag ${shadow.integrityStatus==='HIGH_RISK'?'bad':shadow.integrityStatus==='REVIEW'?'warn':'ok'`};}const h=$('challengeHigh'),md=$('challengeMedium'),t=$('challengeTotal');if(h)h.textContent=String(shadow.highRiskCount);if(md)md.textContent=String(shadow.mediumRiskCount);if(t)t.textContent=String(shadow.findingCount+shadow.falsificationGaps.length);const panel=$('challengeList');if(!panel)return;const rows=[...shadow.findings.slice(0,8).map(f=>`<div class="row"><div><strong>${esc(formatType(f.type))}</strong><small>${esc(f.message)} · Repair: ${esc(f.repairMode||'ANALYST_REVIEW')}</small></div><span class="tag ${f.severity==='high'?'bad':f.severity==='medium'?'warn':'ok'}">${esc((f.severity||'review').toUpperCase())}</span></div>`),...shadow.falsificationGaps.slice(0,4).map(g=>`<div class="row"><div><strong>FALSIFICATION GAP</strong><small>${esc(g.message)} · Repair: ${esc(g.repairMode)}</small></div><span class="tag warn">CHALLENGE</span></div>` )];panel.innerHTML=rows.join('')||'<div class="row"><div><strong>No challenge signals</strong><small>Absence of a signal is not proof of correctness.</small></div><span class="tag ok">CLEAR</span></div>'}
+function renderDecisionIntegrity(){const panel=$('decisionIntegrityList');if(!panel)return;const decisions=Array.isArray(state.decisions)?state.decisions:[];if(!decisions.length){panel.innerHTML='<div class="row"><div><strong>No decision submitted</strong><small>Decision Integrity Gate activates when a decision is linked to hypotheses and evidence.</small></div><span class="tag warn">STANDBY</span></div>';return}const d=decisions[decisions.length-1],r=evaluateDecision(d,state),cls=r.status==='PASS'?'ok':r.status==='REVIEW'?'warn':'bad';panel.innerHTML=`<div class="row"><div><strong>${esc(d.title)}</strong><small>${esc(r.status)} · score ${r.score}/100 · ${r.blockingReasons.length} blocker(s), ${r.warnings.length} warning(s)</small></div><span class="tag ${cls}">${esc(r.status)}</span></div><div class="row"><div><strong>Approval eligibility</strong><small>${r.approvalEligible?'All integrity checks pass.':'Approval is not currently permitted.'}</small></div><span class="tag ${r.approvalEligible?'ok':'bad'}">${r.approvalEligible?'ELIGIBLE':'BLOCKED'}</span></div>`}
+function renderMemory(){const s=memorySummary(loadState()),total=$('memoryTotal'),rec=$('memoryRecurring');if(total)total.textContent=String(s.total);if(rec)rec.textContent=String(s.recurring);const p=$('memoryList');if(!p)return;const mem=extractInstitutionalMemory(loadState()).slice(0,6);p.innerHTML=mem.map(i=>`<div class="row"><div><strong>${esc(formatType(i.type))}</strong><small>${esc(i.pattern)} · ${i.caseCount} case(s) · ${i.occurrences} occurrence(s)</small></div><span class="tag ${i.caseCount>1?'ok':'warn'}">${i.caseCount>1?'RECURRING':'NEW'}</span></div>`).join('')||'<div class="row"><small>No reusable patterns yet.</small></div>'}
+function renderPreInvestigation(){const p=$('preInvestigationList');if(!p)return;const current=loadState(),latest=current.cases?.[current.cases.length-1]||{},b=recommendPreInvestigationChecks(latest,current);p.innerHTML=b.recommendedChecks.slice(0,5).map(c=>`<div class="row"><div><strong>${esc(c.title)}</strong><small>${esc(c.reason)}</small></div><span class="tag ${b.memoryDerived?'ok':'warn'}">${b.memoryDerived?'MEMORY':'BASELINE'}</span></div>`).join('')||'<div class="row"><small>No pre-investigation checks generated.</small></div>'}
+function renderWorkspaceLists(){
+  const cases=$('casesList');if(cases)cases.innerHTML=state.cases.map(c=>`<div class="card" style="margin-bottom:10px"><div class="row"><div><strong>${esc(c.title)}</strong><small>${esc(c.objective||'Objective pending')} · ${esc(c.status)} · ${esc(c.priority)}</small></div><span class="tag">${esc(c.id.slice(0,14))}</span></div></div>`).join('')||'<div class="empty">No cases.</div>';
+  const evidence=$('evidenceList');if(evidence)evidence.innerHTML=state.evidence.map(e=>{const s=state.sources.find(x=>x.id===e.sourceId);return `<div class="card" style="margin-bottom:10px"><div class="row"><div><strong>${esc(e.title)}</strong><small>${esc(e.claim)}</small><small>Case: ${esc(e.caseId)} · Source: ${esc(s?.name||'Unknown')} · Confidence: ${Math.round(e.confidence*100)}%</small></div><span class="tag ${e.status==='FACT'?'ok':e.status==='CONTESTED'?'bad':'warn'}">${esc(e.status)}</span></div></div>`}).join('')||'<div class="empty">No evidence.</div>';
+  const entities=$('entitiesList');if(entities){const rels=state.relationships||[];entities.innerHTML=[...state.entities.map(e=>`<div class="row"><div><strong>${esc(e.name)}</strong><small>${esc(e.type)} · ${e.aliases?.length||0} alias(es)</small></div><span class="tag">ENTITY</span></div>`),...rels.map(r=>{const a=state.entities.find(e=>e.id===r.fromEntityId),b=state.entities.find(e=>e.id===r.toEntityId);return `<div class="row"><div><strong>${esc(a?.name||'?')} → ${esc(b?.name||'?')}</strong><small>${esc(r.type)} · confidence ${Math.round(r.confidence*100)}%</small></div><span class="tag warn">RELATIONSHIP</span></div>`})].join('')||'<div class="empty">No entities or relationships.</div>'}
+  const hyps=$('hypothesesList');if(hyps)hyps.innerHTML=state.hypotheses.map(h=>`<div class="card" style="margin-bottom:10px"><div class="row"><div><strong>${esc(h.statement)}</strong><small>Case: ${esc(h.caseId)} · Falsifier: ${esc(h.falsifier||'Not defined')}</small></div><span class="tag">${Math.round(h.confidence*100)}%</span></div></div>`).join('')||'<div class="empty">No hypotheses.</div>';
+  const cons=$('contradictionsList');if(cons)cons.innerHTML=state.contradictions.map(c=>`<div class="card" style="margin-bottom:10px"><div class="row"><div><strong>${esc(c.type)}</strong><small>${esc(c.explanation||'Candidate contradiction requires analyst review.')}</small></div><span class="tag ${c.severity==='high'?'bad':'warn'}">${esc(c.severity.toUpperCase())}</span></div></div>`).join('')||'<div class="empty">No contradictions currently recorded.</div>';
+}
+function showView(view){if(!VIEW_META[view])view='command';document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));$(`view-${view}`)?.classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('pageTitle').textContent=VIEW_META[view][0];$('pageSub').textContent=VIEW_META[view][1];location.hash=view;render()}
+function openCaseModal(){modal.classList.add('open');$('caseName').focus()}
+function addEvidencePrompt(){if(!state.cases.length)return alert('Create a case first.');const title=prompt('Evidence title');if(!title)return;const claim=prompt('Observed claim');if(!claim)return;const locator=prompt('Source URL / locator (optional)')||'';let source=state.sources.find(s=>s.locator===locator);if(!source){source=createSource({name:locator||'Analyst-entered source',locator,type:'web',reliability:.5,independenceGroup:locator||`manual-${Date.now()}`});addRecord('sources',source)}addRecord('evidence',createEvidence({caseId:state.cases[state.cases.length-1].id,sourceId:source.id,title,claim,locator,status:'UNKNOWN',confidence:.5}));refresh()}
+function addEntityPrompt(){const name=prompt('Entity name');if(!name)return;const type=prompt('Type: person, organization, company, asset, location, event, unknown','unknown')||'unknown';addRecord('entities',createEntity({name,type}));refresh()}
+function addHypothesisPrompt(){if(!state.cases.length)return alert('Create a case first.');const statement=prompt('Hypothesis statement');if(!statement)return;const falsifier=prompt('What evidence would falsify it?')||'';addRecord('hypotheses',createHypothesis({caseId:state.cases[state.cases.length-1].id,statement,falsifier,confidence:.5}));refresh()}
+function refresh(){Object.assign(state,loadState());render()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function formatType(v){return String(v||'signal').replaceAll('_',' ')}
+function downloadText(filename,text,type='text/plain'){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
+function createProfessionalReport(){const report=buildProfessionalReport(loadState());downloadText(reportFilename(loadState()),report,'text/html')}
+window.osintEnterprise={getState:()=>structuredClone(loadState()),validate:()=>validateState(loadState()),createCase:input=>{const r=addRecord('cases',createCase(input));refresh();return r},createEvidence:input=>{const r=addRecord('evidence',createEvidence(input));refresh();return r},createDecision:input=>{const r=addRecord('decisions',createDecision(input));refresh();return r},evaluateDecision:decisionOrId=>{const c=loadState(),d=typeof decisionOrId==='string'?c.decisions?.find(x=>x.id===decisionOrId):decisionOrId;if(!d)throw new Error('Decision not found.');return evaluateDecision(d,c)},transitionDecision:(decisionOrId,nextState)=>{const c=loadState(),d=typeof decisionOrId==='string'?c.decisions?.find(x=>x.id===decisionOrId):decisionOrId;if(!d)throw new Error('Decision not found.');const n=transitionDecision(d,nextState,c);if(typeof decisionOrId==='string'){const i=c.decisions.findIndex(x=>x.id===d.id);c.decisions[i]=n;saveState(c);refresh()}return n},institutionalMemory:()=>extractInstitutionalMemory(loadState()),queryInstitutionalMemory:q=>queryInstitutionalMemory(loadState(),q),memorySummary:()=>memorySummary(loadState()),preInvestigationBrief:input=>recommendPreInvestigationChecks(input||{},loadState()),createProfessionalReport:()=>{createProfessionalReport();return reportFilename(loadState())},triage:()=>{const f=contradictionTriage(loadState());f.forEach(x=>addRecord('contradictions',x));refresh();return f},shadowInvestigation:()=>buildShadowInvestigation(loadState()),exportCase:()=>downloadText('osint-enterprise-export.json',JSON.stringify(loadState(),null,2),'application/json')};
+seed();
+const modal=$('modal');$('newCase')?.addEventListener('click',openCaseModal);$('casesNew')?.addEventListener('click',openCaseModal);$('close')?.addEventListener('click',()=>modal.classList.remove('open'));modal?.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open')});$('create')?.addEventListener('click',()=>{const title=$('caseName')?.value.trim();if(!title)return;window.osintEnterprise.createCase({title,objective:'Investigation objective pending analyst definition.',priority:'medium'});modal.classList.remove('open');$('caseName').value='';showView('cases')});$('audit')?.addEventListener('click',()=>{const f=window.osintEnterprise.triage(),s=window.osintEnterprise.shadowInvestigation();renderChallenge();alert(`${f.length} contradiction candidate(s) generated. Shadow investigation found ${s.findingCount} reasoning-drift signal(s).`)});$('challenge')?.addEventListener('click',()=>{const s=window.osintEnterprise.shadowInvestigation();renderChallenge();$('challengePanel')?.scrollIntoView({behavior:'smooth'});if(!s.findingCount&&!s.falsificationGaps.length)alert('Shadow investigation clear: no current drift signal detected. This is not proof of correctness.')});$('report')?.addEventListener('click',createProfessionalReport);$('reportSecondary')?.addEventListener('click',createProfessionalReport);$('export')?.addEventListener('click',()=>window.osintEnterprise.exportCase());$('evidenceNew')?.addEventListener('click',addEvidencePrompt);$('entityNew')?.addEventListener('click',addEntityPrompt);$('hypothesisNew')?.addEventListener('click',addHypothesisPrompt);$('contradictionRun')?.addEventListener('click',()=>{window.osintEnterprise.triage();showView('contradictions')});$('reportWorkspace')?.addEventListener('click',createProfessionalReport);$('validateWorkspace')?.addEventListener('click',()=>{const r=validateState(loadState());$('governanceResult').innerHTML=`<h3>Validation ${r.valid?'PASSED':'REVIEW REQUIRED'}</h3><p class="sub">${r.errors?.length||0} error(s), ${r.warnings?.length||0} warning(s).</p><pre style="white-space:pre-wrap;color:var(--m)">${esc(JSON.stringify(r,null,2))}</pre>`});document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));window.addEventListener('hashchange',()=>showView(location.hash.slice(1)||'command'));showView(location.hash.slice(1)||'command');
