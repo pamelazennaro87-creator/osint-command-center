@@ -1,3 +1,5 @@
+import { detectReasoningDrift } from './drift.js';
+
 export const GATE_STATUS = Object.freeze(['PASS', 'REVIEW', 'BLOCKED']);
 
 const findingTypes = new Set(['AI_GUARDRAIL', 'SOURCE_DEPENDENCY', 'CONFIDENCE_DRIFT', 'CLAIM_CONFLICT', 'OPPOSITION_GAP']);
@@ -14,6 +16,7 @@ export function evaluateDecision(decision, state = {}) {
   const evidence = Array.isArray(state.evidence) ? state.evidence : [];
   const sources = Array.isArray(state.sources) ? state.sources : [];
   const contradictions = Array.isArray(state.contradictions) ? state.contradictions : [];
+  const driftFindings = Array.isArray(state.driftFindings) ? state.driftFindings : detectReasoningDrift(state);
 
   const caseExists = cases.some(c => c.id === current.caseId);
   checks.push(check('CASE_EXISTS', 'Case exists', caseExists ? 'PASS' : 'BLOCKED', caseExists ? 'Referenced case exists.' : 'Decision references a missing case.'));
@@ -61,8 +64,9 @@ export function evaluateDecision(decision, state = {}) {
   checks.push(check('AI_GUARDRAIL', 'AI evidence verified', aiGuardrail ? 'BLOCKED' : 'PASS', aiGuardrail ? 'AI-assisted supporting evidence lacks human verification.' : 'No unverified AI-assisted supporting evidence detected.'));
   if (aiGuardrail) blockingReasons.push('Unverified AI-assisted evidence supports the decision.');
 
-  const criticalFindings = (state.driftFindings || []).filter(f => findingTypes.has(f.type) && f.severity === 'high');
-  checks.push(check('DRIFT_CLEAR', 'Critical reasoning drift clear', criticalFindings.length ? 'BLOCKED' : 'PASS', criticalFindings.length ? `${criticalFindings.length} high-severity drift signal(s) supplied to the gate.` : 'No supplied high-severity reasoning drift signal remains.'));
+  const caseDrift = driftFindings.filter(f => !f.caseId || f.caseId === current.caseId);
+  const criticalFindings = caseDrift.filter(f => findingTypes.has(f.type) && f.severity === 'high');
+  checks.push(check('DRIFT_CLEAR', 'Critical reasoning drift clear', criticalFindings.length ? 'BLOCKED' : 'PASS', criticalFindings.length ? `${criticalFindings.length} high-severity drift signal(s) detected by the gate.` : 'No high-severity reasoning drift signal remains.'));
   if (criticalFindings.length) blockingReasons.push('High-severity reasoning drift is present.');
 
   const rationalePresent = Boolean(current.rationale?.trim());
@@ -73,7 +77,19 @@ export function evaluateDecision(decision, state = {}) {
   checks.push(check('RISK_ACCEPTED', 'Risk acceptance', riskAccepted ? 'PASS' : 'REVIEW', riskAccepted ? 'Residual risk acceptance is recorded.' : 'Residual risk acceptance is not recorded.'));
   if (!riskAccepted) warnings.push('Residual risk acceptance is not recorded.');
 
+  const approvalConflict = current.state === 'approved' && blockingReasons.length > 0;
+  checks.push(check('APPROVAL_ELIGIBILITY', 'Approval eligibility', approvalConflict ? 'BLOCKED' : 'PASS', approvalConflict ? 'Decision is marked approved but does not pass the integrity gate.' : 'Decision state is compatible with the current integrity result.'));
+  if (approvalConflict) blockingReasons.push('Approved state is not permitted while the integrity gate is blocked.');
+
   const status = blockingReasons.length ? 'BLOCKED' : warnings.length ? 'REVIEW' : 'PASS';
   const score = Math.max(0, Math.round(100 - blockingReasons.length * 15 - warnings.length * 5));
-  return { status, score, evaluatedAt, checks, blockingReasons: [...new Set(blockingReasons)], warnings: [...new Set(warnings)] };
+  return {
+    status,
+    approvalEligible: status === 'PASS',
+    score,
+    evaluatedAt,
+    checks,
+    blockingReasons: [...new Set(blockingReasons)],
+    warnings: [...new Set(warnings)]
+  };
 }
