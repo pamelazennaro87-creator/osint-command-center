@@ -10,17 +10,20 @@ function repairMode(type){
   })[type] || 'ANALYST_REVIEW';
 }
 
+function pushUnique(findings, finding){
+  const key = [finding.type, finding.hypothesisId||'', ...(finding.evidenceIds||[])].join('|');
+  if (!findings.some(f => [f.type,f.hypothesisId||'',...(f.evidenceIds||[])].join('|') === key)) findings.push(finding);
+}
+
 export function detectReasoningDrift(state = {}) {
   const findings = [];
-  const evidence = state.evidence || [];
-  const sources = new Map((state.sources || []).map(s => [s.id, s]));
-  const hypotheses = state.hypotheses || [];
+  const evidence = Array.isArray(state.evidence) ? state.evidence : [];
+  const sources = new Map((Array.isArray(state.sources) ? state.sources : []).map(s => [s.id, s]));
+  const hypotheses = Array.isArray(state.hypotheses) ? state.hypotheses : [];
 
   for (const e of evidence) {
-    if (e.aiAssisted && (e.status === STATUS.FACT || e.humanVerified)) {
-      findings.push({ type:'AI_GUARDRAIL', severity:'high', evidenceId:e.id, repairMode:repairMode('AI_GUARDRAIL'),
-        message:'AI-assisted evidence is marked as fact or human-verified; review the attribution and verification chain.' });
-    }
+    if (e.aiAssisted && e.humanVerified) pushUnique(findings, { type:'AI_GUARDRAIL', severity:'high', evidenceId:e.id, repairMode:repairMode('AI_GUARDRAIL'),
+      message:'AI-assisted evidence is marked human-verified; inspect the human verification and attribution chain before treating it as authoritative.' });
   }
 
   const groups = new Map();
@@ -30,7 +33,7 @@ export function detectReasoningDrift(state = {}) {
     groups.get(s.independenceGroup).push(e);
   }
   for (const [group, items] of groups) {
-    if (items.length >= 2) findings.push({ type:'SOURCE_DEPENDENCY', severity:'medium', independenceGroup:group,
+    if (items.length >= 2) pushUnique(findings, { type:'SOURCE_DEPENDENCY', severity:'medium', independenceGroup:group,
       evidenceIds:items.map(x=>x.id), repairMode:repairMode('SOURCE_DEPENDENCY'),
       message:'Multiple evidence items share the same source-independence group; apparent corroboration may not be independent.' });
   }
@@ -42,18 +45,13 @@ export function detectReasoningDrift(state = {}) {
     const independentGroups = new Set(linked.map(e => sources.get(e.sourceId)?.independenceGroup).filter(Boolean));
     const evidenceStrength = support.reduce((sum,e)=>sum+(Number(e.confidence)||0),0);
     const opposingStrength = opposing.reduce((sum,e)=>sum+(Number(e.confidence)||0),0);
-    if (h.confidence >= .8 && support.length === 0) findings.push({ type:'CONFIDENCE_DRIFT', severity:'high', hypothesisId:h.id, repairMode:repairMode('CONFIDENCE_DRIFT'),
-      message:'Hypothesis confidence is high without explicit supporting evidence.' });
-    if (h.confidence >= .8 && opposing.length >= support.length && opposing.length > 0) findings.push({ type:'CONFIDENCE_DRIFT', severity:'high', hypothesisId:h.id, repairMode:repairMode('CONFIDENCE_DRIFT'),
-      message:'Hypothesis confidence is high despite equal or stronger opposing evidence.' });
-    if (!h.falsifier?.trim()) findings.push({ type:'MISSING_FALSIFIER', severity:'medium', hypothesisId:h.id, repairMode:repairMode('MISSING_FALSIFIER'),
-      message:'Hypothesis has no explicit falsifier. A conclusion without a failure condition is difficult to challenge.' });
-    if (support.length > 0 && independentGroups.size === 1 && linked.length >= 2) findings.push({ type:'CORROBORATION_COLLAPSE', severity:'medium', hypothesisId:h.id, repairMode:'SOURCE_DIVERSIFY',
-      message:'Support is linked to multiple items but only one declared independence group; corroboration may be weaker than it appears.' });
-    if (h.confidence >= .7 && support.length > 0 && evidenceStrength / support.length < h.confidence - .15) findings.push({ type:'CONFIDENCE_DRIFT', severity:'medium', hypothesisId:h.id, repairMode:repairMode('CONFIDENCE_DRIFT'),
-      message:'Hypothesis confidence appears ahead of the average confidence of its supporting evidence.' });
-    if (h.confidence >= .7 && opposingStrength > evidenceStrength) findings.push({ type:'OPPOSITION_GAP', severity:'high', hypothesisId:h.id, repairMode:'REVIEW_OPPOSING_EVIDENCE',
-      message:'Aggregate confidence in opposing evidence exceeds aggregate confidence in supporting evidence.' });
+    if (h.confidence >= .8 && support.length === 0) pushUnique(findings, { type:'CONFIDENCE_DRIFT', severity:'high', hypothesisId:h.id, repairMode:repairMode('CONFIDENCE_DRIFT'), message:'Hypothesis confidence is high without explicit supporting evidence.' });
+    if (h.confidence >= .8 && opposing.length >= support.length && opposing.length > 0) pushUnique(findings, { type:'CONFIDENCE_DRIFT', severity:'high', hypothesisId:h.id, repairMode:repairMode('CONFIDENCE_DRIFT'), message:'Hypothesis confidence is high despite equal or stronger opposing evidence.' });
+    if (!h.falsifier?.trim()) pushUnique(findings, { type:'MISSING_FALSIFIER', severity:'medium', hypothesisId:h.id, repairMode:repairMode('MISSING_FALSIFIER'), message:'Hypothesis has no explicit falsifier. A conclusion without a failure condition is difficult to challenge.' });
+    else if (h.falsifierTested !== true) pushUnique(findings, { type:'UNTESTED_FALSIFIER', severity:'medium', hypothesisId:h.id, repairMode:'TEST_FALSIFIER', message:'A falsifier is defined but has not been explicitly tested and recorded.' });
+    if (support.length > 0 && independentGroups.size === 1 && linked.length >= 2) pushUnique(findings, { type:'CORROBORATION_COLLAPSE', severity:'medium', hypothesisId:h.id, repairMode:'SOURCE_DIVERSIFY', message:'Support is linked to multiple items but only one declared independence group; corroboration may be weaker than it appears.' });
+    if (h.confidence >= .7 && support.length > 0 && evidenceStrength / support.length < h.confidence - .15) pushUnique(findings, { type:'CONFIDENCE_DRIFT', severity:'medium', hypothesisId:h.id, repairMode:repairMode('CONFIDENCE_DRIFT'), message:'Hypothesis confidence appears ahead of the average confidence of its supporting evidence.' });
+    if (h.confidence >= .7 && opposingStrength > evidenceStrength) pushUnique(findings, { type:'OPPOSITION_GAP', severity:'high', hypothesisId:h.id, repairMode:'REVIEW_OPPOSING_EVIDENCE', message:'Aggregate confidence in opposing evidence exceeds aggregate confidence in supporting evidence.' });
   }
 
   const byCase = new Map();
@@ -63,10 +61,9 @@ export function detectReasoningDrift(state = {}) {
       const a=items[i], b=items[j];
       const ac=String(a.claim||'').trim().toLowerCase(), bc=String(b.claim||'').trim().toLowerCase();
       if (!ac || !bc || ac===bc) continue;
-      const sameFrame = ac.replace(NEGATIVE,'').replace(/\s+/g,' ').trim() === bc.replace(NEGATIVE,'').replace(/\s+/g,' ').trim();
-      if (sameFrame && NEGATIVE.test(ac) !== NEGATIVE.test(bc) && POSITIVE.test(ac+bc)) {
-        findings.push({ type:'CLAIM_CONFLICT', severity:'high', evidenceIds:[a.id,b.id], repairMode:repairMode('CLAIM_CONFLICT'),
-          message:'Evidence claims appear to describe the same proposition with conflicting polarity; analyst review required.' });
+      const stripNegative = text => text.replace(NEGATIVE,'').replace(/\s+/g,' ').trim();
+      if (stripNegative(ac) === stripNegative(bc) && NEGATIVE.test(ac) !== NEGATIVE.test(bc) && POSITIVE.test(ac+bc)) {
+        pushUnique(findings, { type:'CLAIM_CONFLICT', severity:'high', evidenceIds:[a.id,b.id], repairMode:repairMode('CLAIM_CONFLICT'), message:'Evidence claims appear to describe the same proposition with conflicting polarity; this is a candidate conflict, not an automatic determination of truth.' });
       }
     }
   }
@@ -75,9 +72,8 @@ export function detectReasoningDrift(state = {}) {
 
 export function buildShadowInvestigation(state = {}) {
   const findings = detectReasoningDrift(state);
-  const hypotheses = state.hypotheses || [];
-  const gaps = hypotheses.filter(h => !(h.evidenceAgainst || []).length).map(h => ({ hypothesisId:h.id,
-    message:'No explicit opposing evidence is linked to this hypothesis.', repairMode:'SEEK_COUNTEREVIDENCE' }));
+  const hypotheses = Array.isArray(state.hypotheses) ? state.hypotheses : [];
+  const gaps = hypotheses.filter(h => !(h.evidenceAgainst || []).length).map(h => ({ hypothesisId:h.id, message:'No explicit opposing evidence is linked to this hypothesis.', repairMode:'SEEK_COUNTEREVIDENCE' }));
   const high = findings.filter(f=>f.severity==='high').length;
   const medium = findings.filter(f=>f.severity==='medium').length;
   const riskScore = Math.min(100, high*25 + medium*10 + gaps.length*8);
