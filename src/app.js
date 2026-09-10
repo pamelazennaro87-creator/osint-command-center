@@ -1,6 +1,8 @@
 import { createCase, createEvidence, createSource, createEntity, createRelationship, createHypothesis } from './core/model.js';
 import { loadState, saveState, addRecord } from './core/store.js';
 import { calculateMetrics, contradictionTriage } from './core/engine.js';
+import { buildShadowInvestigation } from './core/drift.js';
+import { validateState } from './core/validation.js';
 
 const $ = id => document.getElementById(id);
 const state = loadState();
@@ -26,12 +28,15 @@ function render() {
   if(list) list.innerHTML = state.cases.slice(-6).reverse().map(c=>`<div class="row"><div><strong>${escapeHtml(c.title)}</strong><small>${escapeHtml(c.id)} · ${escapeHtml(c.status)}</small></div><span class="tag ${c.priority==='high'?'bad':c.priority==='low'?'ok':'warn'}">${escapeHtml(c.priority.toUpperCase())}</span></div>`).join('') || '<div class="row"><small>No investigations yet.</small></div>';
 }
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function refresh(){ Object.assign(state,loadState()); render(); }
 
 window.osintEnterprise = {
   getState: () => structuredClone(loadState()),
-  createCase: input => { const r=addRecord('cases',createCase(input)); Object.assign(state,loadState()); render(); return r; },
-  createEvidence: input => { const r=addRecord('evidence',createEvidence(input)); Object.assign(state,loadState()); render(); return r; },
-  triage: () => { const findings=contradictionTriage(loadState()); findings.forEach(f=>addRecord('contradictions',f)); Object.assign(state,loadState()); render(); return findings; }
+  validate: () => validateState(loadState()),
+  createCase: input => { const r=addRecord('cases',createCase(input)); refresh(); return r; },
+  createEvidence: input => { const r=addRecord('evidence',createEvidence(input)); refresh(); return r; },
+  triage: () => { const findings=contradictionTriage(loadState()); findings.forEach(f=>addRecord('contradictions',f)); refresh(); return findings; },
+  shadowInvestigation: () => buildShadowInvestigation(loadState())
 };
 
 seed();
@@ -45,5 +50,6 @@ $('create')?.addEventListener('click',()=>{
 });
 $('audit')?.addEventListener('click',()=>{
   const findings=window.osintEnterprise.triage();
-  alert(`${findings.length} contradiction candidate(s) generated for analyst review.`);
+  const shadow=window.osintEnterprise.shadowInvestigation();
+  alert(`${findings.length} contradiction candidate(s) generated. Shadow investigation found ${shadow.findingCount} reasoning-drift signal(s).`);
 });
