@@ -2,8 +2,8 @@ export const TEMPORAL_TYPES=Object.freeze({TEMPORAL_DISCREPANCY:'TEMPORAL_DISCRE
 const text=v=>String(v??'').trim().toLowerCase();
 const dateOf=e=>e?.observedAt||e?.capturedAt||e?.createdAt||'';
 const time=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?0:d.getTime()};
-const explicitIds=e=>[].concat(e?.stableIdentifiers||e?.stableIdentifier||e?.identifiers||[]).map(v=>String(v)).filter(Boolean);
-const embeddedIds=e=>{const s=`${e?.locator||''} ${e?.claim||''}`;const out=[];const patterns=[/\bIMO\s*[:#-]?\s*(\d{7})\b/ig,/\bMMSI\s*[:#-]?\s*(\d{9})\b/ig,/\b(?:LEI|ICAO)\s*[:#-]?\s*([A-Z0-9-]{6,30})\b/ig];for(const r of patterns){for(const m of s.matchAll(r))out.push(`${m[0].split(/[:#-]?\s*/)[0].toUpperCase()}:${m[1]}`)}return out};
+const explicitIds=e=>[].concat(e?.stableIdentifiers||e?.stableIdentifier||e?.identifiers||[]).flatMap(v=>typeof v==='string'||typeof v==='number'?[String(v)]:[]).filter(Boolean);
+const embeddedIds=e=>{const s=`${e?.locator||''} ${e?.claim||''}`;const out=[];const patterns=[/\b(IMO)\s*[:#-]?\s*(\d{7})\b/ig,/\b(MMSI)\s*[:#-]?\s*(\d{9})\b/ig,/\b(LEI|ICAO)\s*[:#-]?\s*([A-Z0-9-]{6,30})\b/ig];for(const r of patterns){for(const m of s.matchAll(r))out.push(`${m[1]}:${m[2]}`)}return out};
 export function extractStableIdentifiers(e){return [...new Set([...explicitIds(e),...embeddedIds(e)].map(text).filter(Boolean))]}
 function fieldSnapshot(e){if(e?.temporalFields&&typeof e.temporalFields==='object')return e.temporalFields;if(e?.temporalField)return {[e.temporalField]:e.value??e.claim};if(e?.field)return {[e.field]:e.value??e.claim};return {claim:e?.claim??''}}
 function keys(a,b){return [...new Set([...Object.keys(fieldSnapshot(a)),...Object.keys(fieldSnapshot(b))])].filter(Boolean)}
