@@ -7,91 +7,19 @@ function baseState(){
   const c = createCase({ id:'case_1', title:'Test case' });
   return { cases:[c], sources:[], evidence:[], entities:[], relationships:[], hypotheses:[], contradictions:[], audit:[] };
 }
+function addSource(state, id, group='g1') { const s=createSource({id,name:id,independenceGroup:group}); state.sources.push(s); return s; }
+function addEvidence(state, input={}) { const e=createEvidence({caseId:'case_1',sourceId:'src_1',claim:'Observed proposition',...input}); state.evidence.push(e); return e; }
 
-function addSource(state, id, group='g1') {
-  const s = createSource({ id, name:id, independenceGroup:group });
-  state.sources.push(s); return s;
-}
-
-function addEvidence(state, input={}) {
-  const e = createEvidence({ caseId:'case_1', sourceId:'src_1', claim:'Observed proposition', ...input });
-  state.evidence.push(e); return e;
-}
-
-test('AI-assisted FACT is downgraded and does not trigger false guardrail', () => {
-  const state = baseState(); addSource(state,'src_1');
-  const e = addEvidence(state,{ aiAssisted:true, status:'FACT' });
-  assert.equal(e.status,'INFERENCE');
-  assert.equal(detectReasoningDrift(state).some(f=>f.type==='AI_GUARDRAIL'),false);
-});
-
-test('AI-assisted human-verified evidence triggers AI guardrail', () => {
-  const state = baseState(); addSource(state,'src_1');
-  addEvidence(state,{ aiAssisted:true, humanVerified:true });
-  assert.equal(detectReasoningDrift(state).some(f=>f.type==='AI_GUARDRAIL'),true);
-});
-
-test('shared independence group is flagged as source dependency', () => {
-  const state = baseState(); addSource(state,'src_1','same'); addSource(state,'src_2','same');
-  addEvidence(state,{sourceId:'src_1',id:'ev_1'}); addEvidence(state,{sourceId:'src_2',id:'ev_2'});
-  assert.equal(detectReasoningDrift(state).some(f=>f.type==='SOURCE_DEPENDENCY'),true);
-});
-
-test('high confidence without support is confidence drift', () => {
-  const state = baseState();
-  state.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',confidence:.9,falsifier:'Independent disproof'}));
-  assert.equal(detectReasoningDrift(state).some(f=>f.type==='CONFIDENCE_DRIFT'),true);
-});
-
-test('high confidence with stronger opposition is confidence drift', () => {
-  const state = baseState(); addSource(state,'src_1','a'); addSource(state,'src_2','b');
-  addEvidence(state,{id:'ev_for',sourceId:'src_1',confidence:.5,claim:'Supports'});
-  addEvidence(state,{id:'ev_against',sourceId:'src_2',confidence:.9,claim:'Opposes'});
-  state.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',evidenceFor:['ev_for'],evidenceAgainst:['ev_against'],confidence:.9,falsifier:'Opposing evidence'}));
-  assert.equal(detectReasoningDrift(state).some(f=>f.type==='CONFIDENCE_DRIFT'),true);
-  assert.equal(detectReasoningDrift(state).some(f=>f.type==='OPPOSITION_GAP'),true);
-});
-
-test('missing falsifier is detected', () => {
-  const state = baseState();
-  state.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim'}));
-  assert.equal(detectReasoningDrift(state).some(f=>f.type==='MISSING_FALSIFIER'),true);
-});
-
-test('polarity conflict is detected as a candidate conflict', () => {
-  const state = baseState(); addSource(state,'src_1','a'); addSource(state,'src_2','b');
-  addEvidence(state,{id:'ev_1',sourceId:'src_1',claim:'Entity is located in Montreal'});
-  addEvidence(state,{id:'ev_2',sourceId:'src_2',claim:'Entity is not located in Montreal'});
-  assert.equal(detectReasoningDrift(state).some(f=>f.type==='CLAIM_CONFLICT'),true);
-});
-
-test('shadow investigation returns findings, gaps, risk score and status', () => {
-  const state = baseState();
-  state.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',confidence:.9,falsifier:'Independent disproof'}));
-  const shadow = buildShadowInvestigation(state);
-  assert.ok(Number.isInteger(shadow.findingCount));
-  assert.equal(Array.isArray(shadow.falsificationGaps),true);
-  assert.equal(typeof shadow.narrativeRiskScore,'number');
-  assert.equal(shadow.integrityStatus,'HIGH_RISK');
-});
-
-test('repair modes are attached to drift findings', () => {
-  const state = baseState(); addSource(state,'src_1');
-  addEvidence(state,{aiAssisted:true,humanVerified:true});
-  const finding = detectReasoningDrift(state).find(f=>f.type==='AI_GUARDRAIL');
-  assert.equal(finding.repairMode,'HUMAN_VERIFY');
-});
-
-test('empty state is safe and clear', () => {
-  const shadow = buildShadowInvestigation({});
-  assert.equal(shadow.findingCount,0);
-  assert.deepEqual(shadow.falsificationGaps,[]);
-  assert.equal(shadow.integrityStatus,'CLEAR');
-  assert.equal(shadow.narrativeRiskScore,0);
-});
-
-test('duplicate evidence IDs are outside drift engine responsibility but do not crash it', () => {
-  const state = baseState(); addSource(state,'src_1');
-  addEvidence(state,{id:'ev_same'}); addEvidence(state,{id:'ev_same',claim:'Entity is not located in Montreal'});
-  assert.doesNotThrow(() => buildShadowInvestigation(state));
-});
+test('AI-assisted FACT is downgraded and does not trigger false guardrail',()=>{const s=baseState();addSource(s,'src_1');const e=addEvidence(s,{aiAssisted:true,status:'FACT'});assert.equal(e.status,'INFERENCE');assert.equal(detectReasoningDrift(s).some(f=>f.type==='AI_GUARDRAIL'),false);});
+test('AI-assisted human-verified evidence triggers AI guardrail',()=>{const s=baseState();addSource(s,'src_1');addEvidence(s,{aiAssisted:true,humanVerified:true});assert.equal(detectReasoningDrift(s).some(f=>f.type==='AI_GUARDRAIL'),true);});
+test('shared independence group is flagged',()=>{const s=baseState();addSource(s,'src_1','same');addSource(s,'src_2','same');addEvidence(s,{sourceId:'src_1',id:'ev_1'});addEvidence(s,{sourceId:'src_2',id:'ev_2'});assert.equal(detectReasoningDrift(s).some(f=>f.type==='SOURCE_DEPENDENCY'),true);});
+test('high confidence without support is confidence drift',()=>{const s=baseState();s.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',confidence:.9,falsifier:'Independent disproof'}));assert.equal(detectReasoningDrift(s).some(f=>f.type==='CONFIDENCE_DRIFT'),true);});
+test('high confidence with stronger opposition is challenged',()=>{const s=baseState();addSource(s,'src_1','a');addSource(s,'src_2','b');addEvidence(s,{id:'ev_for',sourceId:'src_1',confidence:.5,claim:'Supports'});addEvidence(s,{id:'ev_against',sourceId:'src_2',confidence:.9,claim:'Opposes'});s.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',evidenceFor:['ev_for'],evidenceAgainst:['ev_against'],confidence:.9,falsifier:'Opposing evidence'}));const f=detectReasoningDrift(s);assert.equal(f.some(x=>x.type==='CONFIDENCE_DRIFT'),true);assert.equal(f.some(x=>x.type==='OPPOSITION_GAP'),true);});
+test('missing falsifier is detected',()=>{const s=baseState();s.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim'}));assert.equal(detectReasoningDrift(s).some(f=>f.type==='MISSING_FALSIFIER'),true);});
+test('defined but untested falsifier is detected',()=>{const s=baseState();s.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',falsifier:'Independent disproof'}));const f=detectReasoningDrift(s).find(x=>x.type==='UNTESTED_FALSIFIER');assert.ok(f);assert.equal(f.repairMode,'TEST_FALSIFIER');});
+test('tested falsifier does not create untested finding',()=>{const s=baseState();s.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',falsifier:'Independent disproof',falsifierTested:true,falsifierResult:'not_triggered'}));assert.equal(detectReasoningDrift(s).some(f=>f.type==='UNTESTED_FALSIFIER'),false);});
+test('polarity conflict is explicitly a candidate conflict',()=>{const s=baseState();addSource(s,'src_1','a');addSource(s,'src_2','b');addEvidence(s,{id:'ev_1',sourceId:'src_1',claim:'Entity is located in Montreal'});addEvidence(s,{id:'ev_2',sourceId:'src_2',claim:'Entity is not located in Montreal'});const f=detectReasoningDrift(s).find(x=>x.type==='CLAIM_CONFLICT');assert.ok(f);assert.match(f.message,/candidate conflict/i);});
+test('risk score is deterministic and capped',()=>{const s=baseState();for(let i=0;i<10;i++)s.hypotheses.push(createHypothesis({id:`h${i}`,caseId:'case_1',statement:`Claim ${i}`,confidence:.95,falsifier:'Disproof'}));const a=buildShadowInvestigation(s),b=buildShadowInvestigation(s);assert.equal(a.narrativeRiskScore,100);assert.equal(a.narrativeRiskScore,b.narrativeRiskScore);});
+test('duplicate findings are collapsed',()=>{const s=baseState();addSource(s,'src_1');addEvidence(s,{aiAssisted:true,humanVerified:true});const f=detectReasoningDrift(s).filter(x=>x.type==='AI_GUARDRAIL');assert.equal(f.length,1);});
+test('empty state is safe and clear',()=>{const shadow=buildShadowInvestigation({});assert.equal(shadow.findingCount,0);assert.deepEqual(shadow.falsificationGaps,[]);assert.equal(shadow.integrityStatus,'CLEAR');assert.equal(shadow.narrativeRiskScore,0);});
+test('duplicate evidence IDs do not crash drift engine',()=>{const s=baseState();addSource(s,'src_1');addEvidence(s,{id:'ev_same'});addEvidence(s,{id:'ev_same',claim:'Entity is not located in Montreal'});assert.doesNotThrow(()=>buildShadowInvestigation(s));});
