@@ -48,10 +48,20 @@ export function evaluateDecision(decision, state = {}) {
   if (openHigh.length) blockingReasons.push('Open high-severity contradictions remain.');
 
   const sourceIds = [...new Set(support.map(e => e.sourceId).filter(Boolean))];
-  const groups = new Set(sources.filter(s => sourceIds.includes(s.id)).map(s => s.independenceGroup).filter(Boolean));
-  const sourceIndependence = support.length === 0 || groups.size >= Math.min(2, support.length);
-  checks.push(check('SOURCE_INDEPENDENCE', 'Independent source coverage', sourceIndependence ? 'PASS' : 'REVIEW', sourceIndependence ? 'Supporting evidence has sufficient source independence for the current sample.' : 'Supporting evidence is concentrated in one independence group.'));
-  if (!sourceIndependence) warnings.push('Source independence is weak.');
+  const supportingSources = sources.filter(s => sourceIds.includes(s.id));
+  const missingIndependenceMetadata = supportingSources.some(s => !String(s.independenceGroup || '').trim());
+  const groups = new Set(supportingSources.map(s => String(s.independenceGroup || '').trim()).filter(Boolean));
+  const independentCoverage = support.length > 0 && groups.size >= Math.min(2, support.length);
+  const sourceIndependence = support.length === 0 ? 'REVIEW' : missingIndependenceMetadata || !independentCoverage ? 'REVIEW' : 'PASS';
+  const sourceMessage = support.length === 0
+    ? 'No supporting source coverage is available.'
+    : missingIndependenceMetadata
+      ? 'One or more supporting sources lack independence-group metadata; independence cannot be established.'
+      : independentCoverage
+        ? 'Supporting evidence has sufficient source independence for the current sample.'
+        : 'Supporting evidence is concentrated in one independence group.';
+  checks.push(check('SOURCE_INDEPENDENCE', 'Independent source coverage', sourceIndependence, sourceMessage));
+  if (sourceIndependence === 'REVIEW') warnings.push(missingIndependenceMetadata ? 'Source independence metadata is incomplete.' : 'Source independence is weak.');
 
   const confidenceAligned = linked.length > 0 && linked.every(h => {
     const vals = support.filter(e => (h.evidenceFor || []).includes(e.id)).map(e => Number(e.confidence)).filter(Number.isFinite);
@@ -77,9 +87,10 @@ export function evaluateDecision(decision, state = {}) {
   checks.push(check('RISK_ACCEPTED', 'Risk acceptance', riskAccepted ? 'PASS' : 'REVIEW', riskAccepted ? 'Residual risk acceptance is recorded.' : 'Residual risk acceptance is not recorded.'));
   if (!riskAccepted) warnings.push('Residual risk acceptance is not recorded.');
 
-  const approvalConflict = current.state === 'approved' && blockingReasons.length > 0;
-  checks.push(check('APPROVAL_ELIGIBILITY', 'Approval eligibility', approvalConflict ? 'BLOCKED' : 'PASS', approvalConflict ? 'Decision is marked approved but does not pass the integrity gate.' : 'Decision state is compatible with the current integrity result.'));
-  if (approvalConflict) blockingReasons.push('Approved state is not permitted while the integrity gate is blocked.');
+  const preApprovalStatus = blockingReasons.length ? 'BLOCKED' : warnings.length ? 'REVIEW' : 'PASS';
+  const approvalConflict = current.state === 'approved' && preApprovalStatus !== 'PASS';
+  checks.push(check('APPROVAL_ELIGIBILITY', 'Approval eligibility', approvalConflict ? 'BLOCKED' : 'PASS', approvalConflict ? `Decision is marked approved but the integrity gate is ${preApprovalStatus}.` : 'Decision state is compatible with the current integrity result.'));
+  if (approvalConflict) blockingReasons.push(`Approved state is not permitted while the integrity gate is ${preApprovalStatus}.`);
 
   const status = blockingReasons.length ? 'BLOCKED' : warnings.length ? 'REVIEW' : 'PASS';
   const score = Math.max(0, Math.round(100 - blockingReasons.length * 15 - warnings.length * 5));
