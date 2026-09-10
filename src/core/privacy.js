@@ -1,3 +1,5 @@
+import './i18n.js';
+
 const INSTALLATION_KEY = 'osint-installation-id-v2';
 const STATE_PREFIX = 'osint-enterprise-state-v2:';
 
