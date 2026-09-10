@@ -1,4 +1,4 @@
-import { createCase, createEvidence, createSource, createEntity, createRelationship, createHypothesis } from './core/model.js';
+import { createCase, createEvidence, createSource, createEntity, createHypothesis } from './core/model.js';
 import { loadState, saveState, addRecord } from './core/store.js';
 import { calculateMetrics, contradictionTriage } from './core/engine.js';
 import { buildShadowInvestigation } from './core/drift.js';
