@@ -6,20 +6,21 @@ OSINT Command Center is an evidence-first intelligence operating system for stru
 
 > **Find the signal. Trace the evidence. Challenge the conclusion.**
 
-### What is implemented now
+### Implemented foundation
 
-The GitHub Pages application contains a working browser-local intelligence foundation:
+The GitHub Pages application provides a functional browser-local intelligence foundation:
 
 - Case creation and persistence with `localStorage`
 - Structured evidence, source, entity, relationship, hypothesis and contradiction models
-- Evidence status and confidence fields
+- Bounded confidence values and analytical status states
 - Source reliability and independence metadata
 - Deterministic contradiction triage
 - Counter-narrative / falsifier fields for hypotheses
-- AI-assisted evidence attribution with explicit human-review semantics
-- Audit-event model for changes
+- AI-assisted evidence attribution with human-review guardrails
+- Audit-event model for traceability
+- State validation for broken references and duplicate IDs
 - Live Command Center metrics derived from stored state
-- GitHub Actions JavaScript/architecture quality gate
+- GitHub Actions quality gate
 - GitHub Pages deployment pipeline
 
 ### Analytical rule
@@ -57,7 +58,8 @@ No API keys, credentials or secrets belong in the static site.
 │   └── core/
 │       ├── model.js
 │       ├── store.js
-│       └── engine.js
+│       ├── engine.js
+│       └── validation.js
 └── .github/workflows/
     ├── pages.yml
     └── quality.yml
