@@ -1,0 +1,73 @@
+const bytesOf = input => input instanceof Uint8Array ? input : new Uint8Array(input);
+
+export function shannonEntropy(input) {
+  const bytes = bytesOf(input);
+  if (!bytes.length) return 0;
+  const counts = new Array(256).fill(0);
+  for (const b of bytes) counts[b]++;
+  let h=0;
+  for (const n of counts) if(n){const p=n/bytes.length;h-=p*Math.log2(p);}
+  return Number(h.toFixed(4));
+}
+
+export function fileSignature(input) {
+  const b=bytesOf(input), hex=[...b.slice(0,16)].map(x=>x.toString(16).padStart(2,'0')).join(' ');
+  const signatures=[
+    [[0x89,0x50,0x4e,0x47], 'PNG'], [[0xff,0xd8,0xff], 'JPEG'], [[0x47,0x49,0x46,0x38], 'GIF'],
+    [[0x25,0x50,0x44,0x46], 'PDF'], [[0x50,0x4b,0x03,0x04], 'ZIP / Office container'],
+    [[0x52,0x49,0x46,0x46], 'RIFF container'], [[0x1f,0x8b], 'GZIP']
+  ];
+  const match=signatures.find(([sig])=>sig.every((v,i)=>b[i]===v));
+  return {hex,detectedType:match?.[1]||'UNKNOWN',bytes:b.length};
+}
+
+export function timestampAnomalies(values=[]) {
+  const parsed=values.map((value,index)=>{const d=new Date(value);return {index,value,time:Number.isNaN(d.getTime())?null:d.getTime()};});
+  const valid=parsed.filter(x=>x.time!==null);
+  const anomalies=[];
+  for(let i=1;i<valid.length;i++) if(valid[i].time<valid[i-1].time) anomalies.push({type:'NON_MONOTONIC',from:valid[i-1].value,to:valid[i].value});
+  const duplicates=valid.filter((x,i,a)=>a.findIndex(y=>y.time===x.time)!==i).map(x=>x.value);
+  if(duplicates.length) anomalies.push({type:'DUPLICATE_TIMESTAMP',values:[...new Set(duplicates)]});
+  return {parsed,anomalies};
+}
+
+export function provenanceDrift(records=[]) {
+  const rows=records.filter(Boolean).map((r,i)=>({index:i,source:String(r.source||''),author:String(r.author||''),capturedAt:String(r.capturedAt||''),locator:String(r.locator||''),hash:String(r.hash||'')}));
+  const alerts=[];
+  for(let i=1;i<rows.length;i++){
+    if(rows[i].source && rows[i-1].source && rows[i].source===rows[i-1].source && rows[i].hash && rows[i-1].hash && rows[i].hash!==rows[i-1].hash) alerts.push({type:'SOURCE_CONTENT_DRIFT',from:i-1,to:i});
+    if(rows[i].author && rows[i-1].author && rows[i].author!==rows[i-1].author && rows[i].source===rows[i-1].source) alerts.push({type:'AUTHOR_DRIFT',from:i-1,to:i});
+  }
+  return {records:rows,alerts};
+}
+
+export function sourceIndependenceMatrix(sources=[]) {
+  const rows=sources.map((a,i)=>sources.map((b,j)=>{if(i===j)return 'SELF';const ai=String(a.origin||a.name||'').toLowerCase(),bi=String(b.origin||b.name||'').toLowerCase();if(ai&&bi&&ai===bi)return 'SAME_ORIGIN';if(a.parentSourceId&&a.parentSourceId===b.id)return 'DERIVED';if(b.parentSourceId&&b.parentSourceId===a.id)return 'DERIVED';return 'POTENTIALLY_INDEPENDENT';}));
+  return {labels:sources.map(s=>s.name||s.origin||'source'),matrix:rows};
+}
+
+export function negativeSpaceAnalysis({expected=[],observed=[]}={}) {
+  const have=new Set(observed.map(x=>String(x).trim().toLowerCase()));
+  const missing=expected.filter(x=>!have.has(String(x).trim().toLowerCase()));
+  return {expected:expected.length,observed:observed.length,missing,coverage:expected.length?Number((observed.length/expected.length*100).toFixed(1)):0,warning:missing.length?'Absence is a lead, not proof of non-existence.':'No expected signal is currently missing.'};
+}
+
+export function narrativeDelta(before='',after='') {
+  const tokenise=s=>String(s).toLowerCase().match(/[\p{L}\p{N}@._-]+/gu)||[];
+  const a=tokenise(before),b=tokenise(after),A=new Set(a),B=new Set(b);
+  return {added:[...B].filter(x=>!A.has(x)),removed:[...A].filter(x=>!B.has(x)),addedCount:[...B].filter(x=>!A.has(x)).length,removedCount:[...A].filter(x=>!B.has(x)).length};
+}
+
+export function impossibilityCheck(events=[]) {
+  const parsed=events.map((e,i)=>({...e,index:i,time:new Date(e.time).getTime(),lat:Number(e.lat),lon:Number(e.lon)})).filter(e=>Number.isFinite(e.time));
+  const findings=[];
+  for(let i=1;i<parsed.length;i++){
+    const a=parsed[i-1],b=parsed[i];
+    if(Number.isFinite(a.lat)&&Number.isFinite(b.lat)&&Number.isFinite(a.lon)&&Number.isFinite(b.lon)&&b.time>a.time){
+      const hours=(b.time-a.time)/3600000, distance=Math.hypot((b.lat-a.lat)*111,(b.lon-a.lon)*111*Math.cos(a.lat*Math.PI/180));
+      const speed=hours?distance/hours:Infinity;
+      if(speed>1200) findings.push({type:'TEMPORAL_GEO_IMPOSSIBILITY_CANDIDATE',from:a,to:b,distanceKm:Number(distance.toFixed(1)),hours:Number(hours.toFixed(2)),impliedKmh:Number(speed.toFixed(1))});
+    }
+  }
+  return findings;
+}
