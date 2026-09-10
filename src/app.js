@@ -2,7 +2,7 @@ import { createCase, createEvidence, createSource, createEntity, createHypothesi
 import { loadState, saveState, addRecord } from './core/store.js';
 import { calculateMetrics, contradictionTriage } from './core/engine.js';
 import { buildShadowInvestigation } from './core/drift.js';
-import { evaluateDecision } from './core/decision.js';
+import { evaluateDecision, transitionDecision } from './core/decision.js';
 import { extractInstitutionalMemory, memorySummary, queryInstitutionalMemory } from './core/memory.js';
 import { validateState } from './core/validation.js';
 
@@ -70,6 +70,7 @@ window.osintEnterprise = {
   createEvidence: input => { const r=addRecord('evidence',createEvidence(input)); refresh(); return r; },
   createDecision: input => { const r=addRecord('decisions',createDecision(input)); refresh(); return r; },
   evaluateDecision: decisionOrId => { const current=loadState(); const decision=typeof decisionOrId==='string' ? current.decisions?.find(d=>d.id===decisionOrId) : decisionOrId; if(!decision) throw new Error('Decision not found.'); return evaluateDecision(decision,current); },
+  transitionDecision: (decisionOrId, nextState) => { const current=loadState(); const decision=typeof decisionOrId==='string' ? current.decisions?.find(d=>d.id===decisionOrId) : decisionOrId; if(!decision) throw new Error('Decision not found.'); const transitioned=transitionDecision(decision,nextState,current); if(typeof decisionOrId==='string'){ const index=current.decisions.findIndex(d=>d.id===decision.id); current.decisions[index]=transitioned; saveState(current); refresh(); } return transitioned; },
   institutionalMemory: () => extractInstitutionalMemory(loadState()),
   queryInstitutionalMemory: query => queryInstitutionalMemory(loadState(),query),
   memorySummary: () => memorySummary(loadState()),
