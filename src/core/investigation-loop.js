@@ -1,4 +1,4 @@
-import { createCase, createDecision, createEntity, createEvidence, createHypothesis, createRelationship, createSource, now } from './model.js';
+import { createCase, createDecision, createEntity, createEvidence, createHypothesis, createSource, now } from './model.js';
 import { buildIntelligenceMatrix } from './intelligence.js';
 import { buildDAID2 } from './daid2.js';
 
@@ -50,9 +50,8 @@ export function createInvestigationBundle(input = {}) {
   const entity = createEntity({ name: target, type: input.entityType || 'unknown' });
   const evidence = createEvidence({ caseId: c.id, sourceId: source.id, title: 'Investigation intake signal', claim: `Target received: ${target}`, originalText: target, originalLanguage: language, status: 'UNKNOWN', confidence: 0, locator: target, humanVerified: false, notes: 'Intake signal only. This is not proof of the target identity, ownership, relationship or allegation.' });
   const hypothesis = createHypothesis({ caseId: c.id, statement: `The investigation target ${target} can be substantiated by independent public evidence.`, evidenceFor: [], confidence: 0, falsifier: buildFalsifier(target, classifyTarget(target)) });
-  const relationship = createRelationship({ caseId: c.id, fromEntityId: entity.id, toEntityId: entity.id, type: 'investigation_target', evidenceIds: [evidence.id], confidence: 0, status: 'UNKNOWN' });
   const decision = createDecision({ caseId: c.id, title: 'Investigation gate', statement: 'Do not reach a substantive conclusion until evidence, independence and falsification have been tested.', state: 'draft', linkedHypothesisIds: [hypothesis.id], rationale: 'Initial gate created by the Investigation Loop.' });
-  return { case: c, source, entity, evidence, hypothesis, relationship, decision };
+  return { case: c, source, entity, evidence, hypothesis, decision };
 }
 
 export function runInvestigationLoop(state = {}, input = {}) {
