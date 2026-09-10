@@ -7,16 +7,14 @@ const evidence=(id,observedAt,claim,extra={})=>({id,caseId:'case-1',observedAt,c
 test('extracts stable identifiers without hardcoding a case',()=>{
   assert.deepEqual(extractStableIdentifiers(evidence('a','2026-01-01','IMO 9311531')),['imo:9311531']);
   assert.deepEqual(extractStableIdentifiers(evidence('b','2026-01-01','MMSI: 273122820')),['mmsi:273122820']);
-  assert.ok(extractStableIdentifiers(evidence('c','2026-01-01','registry record',{stableIdentifiers:['CUSTOM-42']}).includes('custom-42')));
+  assert.ok(extractStableIdentifiers(evidence('c','2026-01-01','registry record',{stableIdentifiers:['CUSTOM-42']})).includes('custom-42'));
 });
 
 test('classifies a historical field change as STATE_CHANGE',()=>{
   const state={evidence:[
-    evidence('a','2026-03-03','LINDOR', {temporalFields:{name:'LINDOR'}}),
-    evidence('b','2026-08-01','BERILL', {temporalFields:{name:'BERILL'}}),
+    evidence('a','2026-03-03','LINDOR IMO 9311531',{temporalFields:{name:'LINDOR'}}),
+    evidence('b','2026-08-01','BERILL IMO 9311531',{temporalFields:{name:'BERILL'}}),
   ]};
-  state.evidence[0].claim+=' IMO 9311531';
-  state.evidence[1].claim+=' IMO 9311531';
   const result=temporalAnalysis(state);
   assert.equal(result.length,1);
   assert.equal(result[0].type,TEMPORAL_TYPES.STATE_CHANGE);
