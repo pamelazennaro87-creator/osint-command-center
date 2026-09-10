@@ -46,12 +46,15 @@ jobs:
           test -f src/core/privacy.js
           test -f src/core/intelligence.js
           test -f src/core/daid2.js
+          test -f src/core/investigation-loop.js
           test -f src/core/i18n.js
           test -f src/tools/lab.js
           test -f src/tools/lab-ui.js
           test -f tests/tools.test.mjs
           test -f tests/i18n.test.mjs
+          test -f tests/investigation-loop.test.mjs
           test -f src/super-ui.js
+          test -f src/daid-ui.js
           test -f tests/drift.test.mjs
           test -f tests/temporal.test.mjs
           test -f tests/server.test.mjs
@@ -59,3 +62,4 @@ jobs:
           grep -q 'type="module" src="./src/super-ui.js"' index.html
           grep -q 'type="module" src="./src/tools/lab-ui.js"' index.html
           grep -q 'type="module" src="./src/core/i18n.js"' index.html
+          grep -q 'type="module" src="./src/daid-ui.js"' index.html
