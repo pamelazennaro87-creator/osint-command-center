@@ -29,12 +29,14 @@ function render() {
   renderChallenge();
 }
 function renderChallenge(){
-  const panel=$('challengeList'); if(!panel) return;
   const shadow=buildShadowInvestigation(loadState());
-  const items=shadow.findings.slice(0,8);
-  const gaps=shadow.falsificationGaps.slice(0,4);
+  const status=$('challengeStatus'); if(status){ status.textContent=shadow.integrityStatus.replace('_',' '); status.className=`tag ${shadow.integrityStatus==='HIGH_RISK'?'bad':shadow.integrityStatus==='REVIEW'?'warn':'ok'}`; }
+  const high=$('challengeHigh'), medium=$('challengeMedium'), total=$('challengeTotal');
+  if(high) high.textContent=String(shadow.highRiskCount); if(medium) medium.textContent=String(shadow.mediumRiskCount); if(total) total.textContent=String(shadow.findingCount+shadow.falsificationGaps.length);
+  const panel=$('challengeList'); if(!panel) return;
+  const items=shadow.findings.slice(0,8); const gaps=shadow.falsificationGaps.slice(0,4);
   if(!items.length && !gaps.length){ panel.innerHTML='<div class="row"><div><strong>No challenge signals</strong><small>The shadow investigation found no current guardrail breach. Absence of a signal is not proof of correctness.</small></div><span class="tag ok">CLEAR</span></div>'; return; }
-  const rows=[...items.map(f=>`<div class="row"><div><strong>${escapeHtml(formatType(f.type))}</strong><small>${escapeHtml(f.message)}</small></div><span class="tag ${f.severity==='high'?'bad':f.severity==='medium'?'warn':'ok'}">${escapeHtml((f.severity||'review').toUpperCase())}</span></div>`),...gaps.map(g=>`<div class="row"><div><strong>FALSIFICATION GAP</strong><small>${escapeHtml(g.message)}</small></div><span class="tag warn">CHALLENGE</span></div>` )];
+  const rows=[...items.map(f=>`<div class="row"><div><strong>${escapeHtml(formatType(f.type))}</strong><small>${escapeHtml(f.message)} · Repair: ${escapeHtml(f.repairMode||'ANALYST_REVIEW')}</small></div><span class="tag ${f.severity==='high'?'bad':f.severity==='medium'?'warn':'ok'}">${escapeHtml((f.severity||'review').toUpperCase())}</span></div>`),...gaps.map(g=>`<div class="row"><div><strong>FALSIFICATION GAP</strong><small>${escapeHtml(g.message)} · Repair: ${escapeHtml(g.repairMode)}</small></div><span class="tag warn">CHALLENGE</span></div>` )];
   panel.innerHTML=rows.join('');
 }
 function formatType(v){return String(v||'signal').replaceAll('_',' ');}
