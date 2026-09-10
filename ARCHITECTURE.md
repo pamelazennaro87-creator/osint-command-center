@@ -1,72 +1,38 @@
 # OSINT Enterprise Architecture
 
 ## Mission
-OSINT Enterprise is a **Decision Integrity Operating System**, not a collection of OSINT tools. Its purpose is to make an investigation structurally resistant to confirmation bias, source illusion, reasoning drift, premature certainty, and narrative lock-in.
+OSINT Enterprise is a **Decision Integrity Operating System**, not a collection of OSINT tools. Its purpose is to make investigations structurally resistant to confirmation bias, source illusion, reasoning drift, premature certainty, and narrative lock-in.
 
 The product does not merely help an analyst collect information. It continuously asks whether the current explanation deserves to survive.
 
-## What makes it different
+## Five-engine operating model
 
-Most intelligence software optimizes collection, search, graphing, or reporting. OSINT Enterprise optimizes the **integrity of the reasoning chain between evidence and decision**.
+`Evidence Graph → Narrative Engine → Adversarial Engine → Decision Integrity → Institutional Memory`
 
-Its distinctive loop is:
+These engines form a closed analytical loop:
 
-`Observe → Attribute → Corroborate → Challenge → Falsify → Compare → Decide → Preserve`
+`Observe → Attribute → Corroborate → Challenge → Falsify → Compare → Decide → Preserve → Learn`
 
-The primary narrative and a deliberately adversarial **Shadow Investigation** are maintained as parallel analytical objects. The shadow is not an AI opinion and not a second dashboard: it is a deterministic challenge layer that exposes structural weaknesses in the investigation.
+### 1. Evidence Graph
+Captures evidence, provenance, sources, entities, relationships, timestamps, status, confidence, and AI-assistance metadata. Relationships are claims requiring evidence, not facts created by proximity in a graph.
+
+### 2. Narrative Engine
+Maintains competing hypotheses and the evidence for and against them. The system preserves uncertainty and alternative explanations instead of forcing premature narrative closure.
+
+### 3. Adversarial Engine
+Runs the **Shadow Investigation** against the primary narrative. It detects structural weaknesses such as unsupported certainty, source dependency, corroboration collapse, opposing-evidence gaps, untested falsifiers, candidate claim conflicts, and AI attribution risks. Each signal maps to a Repair Mode.
+
+### 4. Decision Integrity Engine
+Treats decisions as first-class records. The **Decision Integrity Gate** evaluates case linkage, evidence support, falsification, contradictions, source independence, confidence alignment, AI verification, reasoning drift, rationale, and risk acceptance. It produces `PASS`, `REVIEW`, or `BLOCKED` and exposes whether approval is eligible.
+
+### 5. Institutional Memory
+Converts recurring analytical failures and corrective patterns into reusable memory. It currently derives deterministic records for failure signatures, repair modes, contradiction patterns, and falsifier patterns. Patterns are canonicalized, counted across cases, and queryable. This is not an ML prediction claim: it is auditable structured learning from prior investigations.
 
 ## Core lifecycle
 
-`Case → Evidence → Source → Entity → Relationship → Hypothesis → Contradiction → Challenge → Decision → Report`
+`Case → Evidence → Source → Entity → Relationship → Hypothesis → Contradiction → Challenge → Decision → Report → Memory`
 
-Every transition preserves provenance and an auditable trail.
-
-## Decision Integrity Model
-
-### 1. Evidence Intelligence
-Captures observations with provenance, status, timestamp, confidence, locator, and AI-assistance metadata. Evidence is never promoted from interpretation to fact merely because it sounds plausible.
-
-### 2. Source Independence Intelligence
-Tracks reliability separately from independence. Ten articles repeating one original claim are not ten independent confirmations. Independence groups expose this hidden duplication.
-
-### 3. Entity & Relationship Graph
-Represents people, organizations, companies, assets, locations, and events. Relationships are claims requiring evidence, not facts created by proximity in a graph.
-
-### 4. Competing Hypothesis Space
-Important cases should not collapse into one narrative too early. Multiple hypotheses can coexist with explicit supporting and opposing evidence.
-
-### 5. Contradiction Engine
-Flags candidate conflicts across claims and hypotheses. A contradiction is an investigation signal, never an automatic declaration that someone is lying.
-
-### 6. Confidence Discipline
-Confidence belongs to a claim and must remain traceable to its evidence. High confidence without proportional support becomes a measurable reasoning-drift signal.
-
-### 7. Falsification Contract
-Every material hypothesis should state what would make it fail. The system distinguishes between a falsifier that is merely defined and one that has actually been tested.
-
-### 8. Shadow Investigation
-The system independently scans the case for:
-- unsupported certainty
-- source dependency
-- corroboration collapse
-- opposing-evidence gaps
-- untested falsifiers
-- candidate claim conflicts
-- AI attribution/verification risks
-
-Each finding receives a **Repair Mode** rather than merely an alert. This turns detection into an operational correction loop.
-
-### 9. Decision Integrity Layer
-Decisions are first-class records rather than the final paragraph of a report. A decision can be draft, review, approved, rejected, or superseded and carries rationale, linked hypotheses, owner, and explicit risk acceptance.
-
-### 10. Institutional Memory
-The durable unit of knowledge is not a bookmark or document. It is the relationship between an observation, its provenance, the hypothesis it changed, the challenge that tested it, and the decision it influenced. This creates a future-ready analytical memory model.
-
-### 11. AI Reasoning Audit
-AI is treated as an accelerator, not an authority. AI-assisted evidence is explicitly marked and verification boundaries are preserved. The architecture is designed so an AI layer can later propose candidates while the integrity layer remains deterministic and auditable.
-
-### 12. Enterprise Reporting
-Reports should be generated from the decision record, preserving uncertainty, alternative explanations, contradictions, and unresolved gaps instead of producing a polished narrative that hides them.
+Every transition is designed to preserve provenance and an auditable trail.
 
 ## Analytical states
 
@@ -83,11 +49,13 @@ Reports should be generated from the decision record, preserving uncertainty, al
 3. A conclusion without a credible falsifier is analytically incomplete.
 4. AI assistance never becomes authority by default.
 5. A contradiction is a signal to investigate, not proof of deception.
-6. Every material decision must remain traceable to the evidence and hypotheses that produced it.
+6. A material decision must remain traceable to the evidence and hypotheses that produced it.
 7. The system must preserve what is unknown instead of silently filling gaps.
+8. An approved decision must be eligible under the integrity gate; blocked reasoning cannot be silently promoted to approval.
+9. Institutional memory must remain attributable to the cases and analytical signals that produced it.
 
 ## Product boundary
 
-The current GitHub Pages implementation is a browser-local foundation. It demonstrates the domain model and integrity engine but is not a secure enterprise backend. Production requires authenticated server-side services, authorization, encrypted storage, immutable audit, secure secrets, backups, controlled source acquisition, retention policy, and tenant isolation where applicable.
+The current GitHub Pages implementation is a browser-local foundation. It demonstrates the domain model and integrity engines but is not a secure enterprise backend. Production requires authenticated server-side services, authorization, encrypted storage, immutable audit, secure secrets, backups, controlled source acquisition, retention policy, and tenant isolation where applicable.
 
 No secrets, credentials, API keys, or sensitive case material belong in the static client.
