@@ -21,8 +21,8 @@ export function extractInstitutionalMemory(state={}) {
   const hypotheses=Array.isArray(state.hypotheses)?state.hypotheses:[];
   for(const finding of drift){
     const type=finding.type==='UNTESTED_FALSIFIER'?'FALSIFIER_PATTERN':finding.type==='CLAIM_CONFLICT'?'CONTRADICTION_PATTERN':'FAILURE_SIGNATURE';
-    add(map,type,finding.type||finding.message,{caseId:finding.caseId,example:finding.message});
-    if(finding.repairMode) add(map,'REPAIR_MODE',finding.repairMode,{caseId:finding.caseId,example:finding.message});
+    add(map,type,finding.type||finding.message,{caseId:finding.caseId||finding.hypothesisId,example:finding.message});
+    if(finding.repairMode) add(map,'REPAIR_MODE',finding.repairMode,{caseId:finding.caseId||finding.hypothesisId,example:finding.message});
   }
   for(const contradiction of contradictions) add(map,'CONTRADICTION_PATTERN',contradiction.type||'claim_conflict',{caseId:contradiction.caseId,example:contradiction.explanation});
   for(const hypothesis of hypotheses) if(hypothesis.falsifier) add(map,'FALSIFIER_PATTERN',hypothesis.falsifier,{caseId:hypothesis.caseId});
