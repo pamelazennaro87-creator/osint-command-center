@@ -1,17 +1,13 @@
 export const GATE_STATUS = Object.freeze(['PASS', 'REVIEW', 'BLOCKED']);
 
 const findingTypes = new Set(['AI_GUARDRAIL', 'SOURCE_DEPENDENCY', 'CONFIDENCE_DRIFT', 'CLAIM_CONFLICT', 'OPPOSITION_GAP']);
+const VALID_FALSIFIER_RESULTS = new Set(['supported', 'failed', 'inconclusive', 'not_triggered', 'triggered', 'disproved']);
 
-function check(id, label, status, message) {
-  return { id, label, status, message };
-}
+function check(id, label, status, message) { return { id, label, status, message }; }
 
 export function evaluateDecision(decision, state = {}) {
   const evaluatedAt = new Date().toISOString();
-  const checks = [];
-  const blockingReasons = [];
-  const warnings = [];
-
+  const checks = [], blockingReasons = [], warnings = [];
   const current = decision || {};
   const cases = Array.isArray(state.cases) ? state.cases : [];
   const hypotheses = Array.isArray(state.hypotheses) ? state.hypotheses : [];
@@ -24,21 +20,19 @@ export function evaluateDecision(decision, state = {}) {
   if (!caseExists) blockingReasons.push('Referenced case does not exist.');
 
   const linked = hypotheses.filter(h => (current.linkedHypothesisIds || []).includes(h.id));
-  const hypothesesLinked = linked.length > 0;
-  checks.push(check('HYPOTHESES_LINKED', 'Hypotheses linked', hypothesesLinked ? 'PASS' : 'BLOCKED', hypothesesLinked ? `${linked.length} hypothesis/hypotheses linked.` : 'No hypotheses are linked to the decision.'));
-  if (!hypothesesLinked) blockingReasons.push('Decision has no linked hypothesis.');
+  checks.push(check('HYPOTHESES_LINKED', 'Hypotheses linked', linked.length ? 'PASS' : 'BLOCKED', linked.length ? `${linked.length} hypothesis/hypotheses linked.` : 'No hypotheses are linked to the decision.'));
+  if (!linked.length) blockingReasons.push('Decision has no linked hypothesis.');
 
   const supportIds = [...new Set(linked.flatMap(h => h.evidenceFor || []))];
   const support = evidence.filter(e => supportIds.includes(e.id));
-  const supportingEvidence = support.length > 0;
-  checks.push(check('SUPPORTING_EVIDENCE', 'Supporting evidence', supportingEvidence ? 'PASS' : 'BLOCKED', supportingEvidence ? `${support.length} supporting evidence item(s) linked.` : 'No supporting evidence is linked through the selected hypotheses.'));
-  if (!supportingEvidence) blockingReasons.push('No supporting evidence is linked to the decision.');
+  checks.push(check('SUPPORTING_EVIDENCE', 'Supporting evidence', support.length ? 'PASS' : 'BLOCKED', support.length ? `${support.length} supporting evidence item(s) linked.` : 'No supporting evidence is linked through the selected hypotheses.'));
+  if (!support.length) blockingReasons.push('No supporting evidence is linked to the decision.');
 
   const falsifierDefined = linked.length > 0 && linked.every(h => Boolean(h.falsifier?.trim()));
   checks.push(check('FALSIFIER_DEFINED', 'Falsifier defined', falsifierDefined ? 'PASS' : 'BLOCKED', falsifierDefined ? 'Every linked hypothesis has a falsifier.' : 'At least one linked hypothesis lacks a falsifier.'));
   if (!falsifierDefined) blockingReasons.push('A linked hypothesis has no falsifier/counter-narrative condition.');
 
-  const falsifierTested = linked.length > 0 && linked.every(h => h.falsifierTested === true && ['supported', 'failed', 'inconclusive'].includes(String(h.falsifierResult || '').toLowerCase()));
+  const falsifierTested = linked.length > 0 && linked.every(h => h.falsifierTested === true && VALID_FALSIFIER_RESULTS.has(String(h.falsifierResult || '').toLowerCase()));
   checks.push(check('FALSIFIER_TESTED', 'Falsifier tested', falsifierTested ? 'PASS' : 'BLOCKED', falsifierTested ? 'Falsifier testing is recorded for every linked hypothesis.' : 'Falsifier testing is missing or incomplete.'));
   if (!falsifierTested) blockingReasons.push('Falsifier testing is missing or incomplete.');
 
@@ -47,9 +41,8 @@ export function evaluateDecision(decision, state = {}) {
   if (!oppositionConsidered) warnings.push('Opposing evidence is incomplete; analyst review is required.');
 
   const openHigh = contradictions.filter(c => c.caseId === current.caseId && c.status === 'open' && c.severity === 'high');
-  const contradictionsResolved = openHigh.length === 0;
-  checks.push(check('CONTRADICTIONS_RESOLVED', 'High-severity contradictions resolved', contradictionsResolved ? 'PASS' : 'BLOCKED', contradictionsResolved ? 'No open high-severity contradiction remains.' : `${openHigh.length} open high-severity contradiction(s) remain.`));
-  if (!contradictionsResolved) blockingReasons.push('Open high-severity contradictions remain.');
+  checks.push(check('CONTRADICTIONS_RESOLVED', 'High-severity contradictions resolved', openHigh.length ? 'BLOCKED' : 'PASS', openHigh.length ? `${openHigh.length} open high-severity contradiction(s) remain.` : 'No open high-severity contradiction remains.'));
+  if (openHigh.length) blockingReasons.push('Open high-severity contradictions remain.');
 
   const sourceIds = [...new Set(support.map(e => e.sourceId).filter(Boolean))];
   const groups = new Set(sources.filter(s => sourceIds.includes(s.id)).map(s => s.independenceGroup).filter(Boolean));
@@ -69,12 +62,8 @@ export function evaluateDecision(decision, state = {}) {
   if (aiGuardrail) blockingReasons.push('Unverified AI-assisted evidence supports the decision.');
 
   const criticalFindings = (state.driftFindings || []).filter(f => findingTypes.has(f.type) && f.severity === 'high');
-  if (criticalFindings.length) {
-    checks.push(check('DRIFT_CLEAR', 'Critical reasoning drift clear', 'BLOCKED', `${criticalFindings.length} high-severity drift signal(s) supplied to the gate.`));
-    blockingReasons.push('High-severity reasoning drift is present.');
-  } else {
-    checks.push(check('DRIFT_CLEAR', 'Critical reasoning drift clear', 'PASS', 'No supplied high-severity reasoning drift signal remains.'));
-  }
+  checks.push(check('DRIFT_CLEAR', 'Critical reasoning drift clear', criticalFindings.length ? 'BLOCKED' : 'PASS', criticalFindings.length ? `${criticalFindings.length} high-severity drift signal(s) supplied to the gate.` : 'No supplied high-severity reasoning drift signal remains.'));
+  if (criticalFindings.length) blockingReasons.push('High-severity reasoning drift is present.');
 
   const rationalePresent = Boolean(current.rationale?.trim());
   checks.push(check('RATIONALE_PRESENT', 'Decision rationale', rationalePresent ? 'PASS' : 'BLOCKED', rationalePresent ? 'Rationale is recorded.' : 'Decision rationale is missing.'));
