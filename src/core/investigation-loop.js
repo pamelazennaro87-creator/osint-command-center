@@ -14,6 +14,10 @@ export function classifyTarget(target = '') {
   return 'subject';
 }
 
+function entityTypeFor(kind) {
+  return kind === 'email' || kind === 'username' ? 'person' : kind === 'ip' || kind === 'url' ? 'asset' : 'unknown';
+}
+
 export function buildFalsifier(target, kind) {
   const t = clean(target) || 'the target';
   const noun = kind === 'url' ? 'the URL' : kind === 'email' ? 'the identity' : kind === 'ip' ? 'the infrastructure attribution' : 'the target relationship or identity';
@@ -24,7 +28,7 @@ export function buildInvestigationPlan(state = {}, input = {}) {
   const target = clean(input.target);
   const objective = clean(input.objective) || `Determine what can and cannot be established about ${target || 'the target'}.`;
   const kind = input.kind || classifyTarget(target);
-  const caseId = input.caseId || state.cases?.at(-1)?.id || '';
+  const caseId = clean(input.caseId);
   const scopedEvidence = (state.evidence || []).filter(e => !caseId || e.caseId === caseId);
   const scopedHypotheses = (state.hypotheses || []).filter(h => !caseId || h.caseId === caseId);
   const scopedContradictions = (state.contradictions || []).filter(c => !caseId || c.caseId === caseId);
@@ -45,11 +49,12 @@ export function createInvestigationBundle(input = {}) {
   const objective = clean(input.objective) || `Determine what can and cannot be established about ${target}.`;
   const language = clean(input.language) || 'en';
   const timestamp = now();
+  const kind = input.kind || classifyTarget(target);
   const c = createCase({ title: input.title || `Investigation: ${target}`, objective, investigationLanguage: language, searchLanguages: [language] });
   const source = createSource({ name: `Intake: ${target}`, type: 'intake', locator: target, url: /^https?:\/\//i.test(target) ? target : '', originalLanguage: language, provenance: 'Analyst-provided investigation target', capturedAt: timestamp });
-  const entity = createEntity({ name: target, type: input.entityType || 'unknown' });
-  const evidence = createEvidence({ caseId: c.id, sourceId: source.id, title: 'Investigation intake signal', claim: `Target received: ${target}`, originalText: target, originalLanguage: language, status: 'UNKNOWN', confidence: 0, locator: target, humanVerified: false, notes: 'Intake signal only. This is not proof of the target identity, ownership, relationship or allegation.' });
-  const hypothesis = createHypothesis({ caseId: c.id, statement: `The investigation target ${target} can be substantiated by independent public evidence.`, evidenceFor: [], confidence: 0, falsifier: buildFalsifier(target, classifyTarget(target)) });
+  const entity = createEntity({ name: target, type: input.entityType || entityTypeFor(kind) });
+  const evidence = createEvidence({ caseId: c.id, sourceId: source.id, sourceIds: [source.id], entityIds: [entity.id], title: 'Investigation intake signal', claim: `Target received: ${target}`, originalText: target, originalLanguage: language, status: 'UNKNOWN', confidence: 0, locator: target, humanVerified: false, notes: 'Intake signal only. This is not proof of the target identity, ownership, relationship or allegation.' });
+  const hypothesis = createHypothesis({ caseId: c.id, statement: `The investigation target ${target} can be substantiated by independent public evidence.`, evidenceFor: [], confidence: 0, falsifier: buildFalsifier(target, kind) });
   const decision = createDecision({ caseId: c.id, title: 'Investigation gate', statement: 'Do not reach a substantive conclusion until evidence, independence and falsification have been tested.', state: 'draft', linkedHypothesisIds: [hypothesis.id], rationale: 'Initial gate created by the Investigation Loop.' });
   return { case: c, source, entity, evidence, hypothesis, decision };
 }
@@ -60,11 +65,12 @@ export function runInvestigationLoop(state = {}, input = {}) {
   const daid = buildDAID2(state, matrix);
   const missing = unique([...plan.unknown, ...(matrix.gaps || []).slice(0, 6).map(g => g.message)]);
   return {
-    version: '1.0',
+    version: '1.1',
     generatedAt: now(),
     target: plan.target,
     kind: plan.kind,
     objective: plan.objective,
+    caseId: plan.caseId,
     stage: daid.mode,
     known: plan.known,
     inferred: plan.inferred,
