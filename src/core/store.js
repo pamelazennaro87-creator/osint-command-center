@@ -1,6 +1,7 @@
 import { createAuditEvent } from './model.js';
+import { getPrivateStateKey } from './privacy.js';
 
-const KEY = 'osint-enterprise-state-v1';
+const LEGACY_KEY = 'osint-enterprise-state-v1';
 
 const emptyState = () => ({
   cases: [], sources: [], evidence: [], entities: [], relationships: [],
@@ -9,15 +10,24 @@ const emptyState = () => ({
 
 export function loadState() {
   try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? { ...emptyState(), ...JSON.parse(raw) } : emptyState();
+    const key = getPrivateStateKey();
+    const raw = localStorage.getItem(key);
+    if (raw) return { ...emptyState(), ...JSON.parse(raw) };
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const migrated = { ...emptyState(), ...JSON.parse(legacy) };
+      localStorage.setItem(key, JSON.stringify(migrated));
+      localStorage.removeItem(LEGACY_KEY);
+      return migrated;
+    }
+    return emptyState();
   } catch {
     return emptyState();
   }
 }
 
 export function saveState(state) {
-  localStorage.setItem(KEY, JSON.stringify(state));
+  localStorage.setItem(getPrivateStateKey(), JSON.stringify(state));
   return state;
 }
 
