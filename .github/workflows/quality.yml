@@ -25,6 +25,8 @@ jobs:
           node --check src/core/model.js
           node --check src/core/store.js
           node --check src/core/engine.js
+          node --check src/core/drift.js
+          node --check src/core/validation.js
           node --check src/app.js
       - name: Validate required architecture files
         run: |
@@ -33,4 +35,6 @@ jobs:
           test -f src/core/model.js
           test -f src/core/store.js
           test -f src/core/engine.js
+          test -f src/core/drift.js
+          test -f src/core/validation.js
           grep -q 'type="module" src="./src/app.js"' index.html
