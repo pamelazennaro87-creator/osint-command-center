@@ -4,6 +4,7 @@ import { calculateMetrics, contradictionTriage } from './core/engine.js';
 import { buildShadowInvestigation } from './core/drift.js';
 import { evaluateDecision, transitionDecision } from './core/decision.js';
 import { extractInstitutionalMemory, memorySummary, queryInstitutionalMemory } from './core/memory.js';
+import { recommendPreInvestigationChecks, buildProfessionalReport, reportFilename } from './core/report.js';
 import { validateState } from './core/validation.js';
 
 const $ = id => document.getElementById(id);
@@ -28,7 +29,7 @@ function render() {
   ['verifiedPct','corroboratedPct','aiPct'].forEach(k=>{const el=$(k); if(el){el.textContent=`${m[k]}%`; const bar=$(k+'Bar'); if(bar)bar.style.width=`${m[k]}%`;}});
   const list=$('caseList');
   if(list) list.innerHTML = state.cases.slice(-6).reverse().map(c=>`<div class="row"><div><strong>${escapeHtml(c.title)}</strong><small>${escapeHtml(c.id)} · ${escapeHtml(c.status)}</small></div><span class="tag ${c.priority==='high'?'bad':c.priority==='low'?'ok':'warn'}">${escapeHtml(c.priority.toUpperCase())}</span></div>`).join('') || '<div class="row"><small>No investigations yet.</small></div>';
-  renderChallenge(); renderDecisionIntegrity(); renderMemory();
+  renderChallenge(); renderDecisionIntegrity(); renderMemory(); renderPreInvestigation();
 }
 function renderChallenge(){
   const shadow=buildShadowInvestigation(loadState());
@@ -58,10 +59,16 @@ function renderMemory(){
   if(!memory.length){ panel.innerHTML='<div class="row"><div><strong>No reusable patterns yet</strong><small>Institutional Memory is derived from observed failures, repairs, contradictions and falsifiers.</small></div><span class="tag warn">EMPTY</span></div>'; return; }
   panel.innerHTML=memory.map(item=>`<div class="row"><div><strong>${escapeHtml(formatType(item.type))}</strong><small>${escapeHtml(item.pattern)} · ${item.caseCount} case(s) · ${item.occurrences} occurrence(s)</small></div><span class="tag ${item.caseCount>1?'ok':'warn'}">${item.caseCount>1?'RECURRING':'NEW'}</span></div>`).join('');
 }
+function renderPreInvestigation(){
+  const panel=$('preInvestigationList'); if(!panel) return;
+  const current=loadState(); const latest=current.cases?.[current.cases.length-1]||{}; const brief=recommendPreInvestigationChecks(latest,current);
+  panel.innerHTML=brief.recommendedChecks.slice(0,5).map(c=>`<div class="row"><div><strong>${escapeHtml(c.title)}</strong><small>${escapeHtml(c.reason)}</small></div><span class="tag ${brief.memoryDerived?'ok':'warn'}">${brief.memoryDerived?'MEMORY':'BASELINE'}</span></div>`).join('') || '<div class="row"><small>No pre-investigation checks generated.</small></div>';
+}
 function formatType(v){return String(v||'signal').replaceAll('_',' ');}
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function refresh(){ Object.assign(state,loadState()); render(); }
 function downloadText(filename,text,type='text/plain'){ const blob=new Blob([text],{type}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); }
+function createProfessionalReport(){ const report=buildProfessionalReport(loadState()); downloadText(reportFilename(loadState()),report,'text/html'); }
 
 window.osintEnterprise = {
   getState: () => structuredClone(loadState()),
@@ -74,6 +81,8 @@ window.osintEnterprise = {
   institutionalMemory: () => extractInstitutionalMemory(loadState()),
   queryInstitutionalMemory: query => queryInstitutionalMemory(loadState(),query),
   memorySummary: () => memorySummary(loadState()),
+  preInvestigationBrief: caseInput => recommendPreInvestigationChecks(caseInput||{},loadState()),
+  createProfessionalReport: () => { createProfessionalReport(); return reportFilename(loadState()); },
   triage: () => { const findings=contradictionTriage(loadState()); findings.forEach(f=>addRecord('contradictions',f)); refresh(); return findings; },
   shadowInvestigation: () => buildShadowInvestigation(loadState()),
   exportCase: () => downloadText('osint-enterprise-export.json',JSON.stringify(loadState(),null,2),'application/json')
@@ -84,4 +93,5 @@ seed(); render();
 $('create')?.addEventListener('click',()=>{ const title=$('caseName')?.value.trim(); if(!title)return; window.osintEnterprise.createCase({title, objective:'Investigation objective pending analyst definition.', priority:'medium'}); $('modal')?.classList.remove('open'); $('caseName').value=''; });
 $('audit')?.addEventListener('click',()=>{ const findings=window.osintEnterprise.triage(); const shadow=window.osintEnterprise.shadowInvestigation(); renderChallenge(); alert(`${findings.length} contradiction candidate(s) generated. Shadow investigation found ${shadow.findingCount} reasoning-drift signal(s).`); });
 $('challenge')?.addEventListener('click',()=>{ const shadow=window.osintEnterprise.shadowInvestigation(); renderChallenge(); $('challengePanel')?.scrollIntoView({behavior:'smooth',block:'start'}); if(!shadow.findingCount && !shadow.falsificationGaps.length) alert('Shadow investigation clear: no current drift signal detected. This is not proof of correctness.'); });
+$('report')?.addEventListener('click',()=>window.osintEnterprise.createProfessionalReport());
 $('export')?.addEventListener('click',()=>window.osintEnterprise.exportCase());
