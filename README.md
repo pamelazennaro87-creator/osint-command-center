@@ -15,6 +15,7 @@ The GitHub Pages application provides a functional browser-local intelligence fo
 - Bounded confidence values and analytical status states
 - Source reliability and independence metadata
 - Deterministic contradiction triage
+- Temporal Integrity Engine for historical identity/state changes
 - Counter-narrative / falsifier fields for hypotheses
 - AI-assisted evidence attribution with human-review guardrails
 - Audit-event model for traceability
@@ -22,6 +23,14 @@ The GitHub Pages application provides a functional browser-local intelligence fo
 - Live Command Center metrics derived from stored state
 - GitHub Actions quality gate
 - GitHub Pages deployment pipeline
+
+### Temporal integrity
+
+The Temporal Integrity Engine groups observations by stable identifiers and compares historical field values across dated evidence. It can surface changes in names, flags, ownership, management, status or other analyst-defined temporal fields without treating a later state as a logical contradiction of an earlier snapshot.
+
+**Core rule: `STATE_CHANGE ≠ CONTRADICTION`.** A historical discrepancy becomes analytically meaningful only when the evidence supports that interpretation; the engine therefore preserves the timeline and leaves the conclusion to the analyst.
+
+Stable identifiers may be supplied explicitly or extracted from supported embedded identifiers such as IMO, MMSI, LEI and ICAO. The model is not tied to the BERILL case or to a single identifier type.
 
 ### Analytical rule
 
@@ -38,6 +47,10 @@ The system distinguishes:
 ### Architecture
 
 `Case → Evidence → Source → Entity → Relationship → Hypothesis → Contradiction → Confidence → Decision → Report`
+
+The temporal layer operates across the Evidence portion of this chain:
+
+`Evidence → Stable Identifier → Historical Field State → Timeline → Temporal Signal → Analyst Assessment`
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the domain specification and production boundary.
 
@@ -59,7 +72,11 @@ No API keys, credentials or secrets belong in the static site.
 │       ├── model.js
 │       ├── store.js
 │       ├── engine.js
+│       ├── temporal.js
 │       └── validation.js
+├── tests/
+│   ├── drift.test.mjs
+│   └── temporal.test.mjs
 └── .github/workflows/
     ├── pages.yml
     └── quality.yml
