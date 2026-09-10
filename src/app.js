@@ -2,8 +2,8 @@ import { createCase, createEvidence, createSource, createEntity, createHypothesi
 import { loadState, saveState, addRecord } from './core/store.js';
 import { calculateMetrics, contradictionTriage } from './core/engine.js';
 import { buildShadowInvestigation } from './core/drift.js';
-import { evaluateDecision, transitionDecision } from './core/decision.js';
-import { extractInstitutionalMemory, memorySummary, queryInstitutionalMemory } from './core/memory.js';
+import { evaluateDecision } from './core/decision.js';
+import { extractInstitutionalMemory, memorySummary } from './core/memory.js';
 import { recommendPreInvestigationChecks, buildProfessionalReport, reportFilename } from './core/report.js';
 import { validateState } from './core/validation.js';
 import { temporalAnalysis, buildTemporalTimeline } from './core/temporal.js';
@@ -11,157 +11,74 @@ import { sanitizeForExport, privacySummary } from './core/privacy.js';
 
 const $ = id => document.getElementById(id);
 const META = {
-  command: ['Command Center', 'Evidence, uncertainty and competing explanations in one decision layer.'],
-  cases: ['Cases', 'Create and inspect investigations stored in this browser.'],
-  evidence: ['Evidence', 'Record claims with source provenance and uncertainty status.'],
-  entities: ['Entities & Graph', 'Track people, organizations, assets and relationships.'],
-  hypotheses: ['Hypotheses', 'Keep competing explanations explicit and falsifiable.'],
-  contradictions: ['Contradictions', 'Review conflicts and analytical challenge signals.'],
-  reports: ['Reports', 'Export a professional assessment from the current state.'],
-  governance: ['Governance', 'Validate state and inspect the integrity boundary of this prototype.']
+  command:['Command Center','Evidence, uncertainty and competing explanations in one decision layer.'],
+  cases:['Cases','Investigations, objectives, priorities and operational status.'],
+  evidence:['Evidence','Claims, provenance, confidence, verification and source independence.'],
+  entities:['Entities & Graph','People, organisations, assets and relationships — with a live evidence graph.'],
+  hypotheses:['Hypotheses','Competing explanations, falsifiers and confidence.'],
+  contradictions:['Contradictions','Conflicts, dependency signals and analytical challenge.'],
+  reports:['Reports','A decision-ready assessment generated from the current case state.'],
+  governance:['Governance','Validation, privacy boundary, audit trail and readiness controls.']
 };
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct=v=>Math.round(Math.max(0,Math.min(1,Number(v)||0))*100);
 
-function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-}
-
-function seed(state) {
-  if (state.cases.length) return;
-  const c = createCase({ title: 'Entity relationship review', objective: 'Determine whether observed relationships are supported by independent evidence.', priority: 'high' });
-  const s = createSource({ name: 'Demo public source', type: 'web', reliability: 0.7, independenceGroup: 'demo-1' });
-  const e = createEvidence({ caseId: c.id, sourceId: s.id, title: 'Initial observation', claim: 'Observed relationship requires verification.', status: 'UNKNOWN', confidence: 0.4 });
-  state.cases.push(c); state.sources.push(s); state.evidence.push(e);
-  const a = createEntity({ name: 'Example entity A', type: 'person' });
-  const b = createEntity({ name: 'Example organization B', type: 'organization' });
-  state.entities.push(a, b); state.relationships = state.relationships || [];
-  state.relationships.push(createRelationship({ caseId: c.id, fromEntityId: a.id, toEntityId: b.id, evidenceIds: [e.id], confidence: 0.3 }));
-  state.hypotheses.push(createHypothesis({ caseId: c.id, statement: 'The observed relationship is genuine.', confidence: 0.4, falsifier: 'Independent evidence disproves the relationship.' }));
+function seed(state){
+  if(state.cases.length) return;
+  const c=createCase({title:'Entity relationship review',objective:'Determine whether observed relationships are supported by independent evidence.',priority:'high'});
+  const s=createSource({name:'Demo public source',type:'web',reliability:.7,independenceGroup:'demo-1'});
+  const e=createEvidence({caseId:c.id,sourceId:s.id,title:'Initial observation',claim:'Observed relationship requires verification.',status:'UNKNOWN',confidence:.4});
+  const a=createEntity({name:'Example entity A',type:'person'}),b=createEntity({name:'Example organisation B',type:'organization'});
+  state.cases.push(c);state.sources.push(s);state.evidence.push(e);state.entities.push(a,b);state.relationships.push(createRelationship({caseId:c.id,fromEntityId:a.id,toEntityId:b.id,type:'associated_with',evidenceIds:[e.id],confidence:.3}));
+  state.hypotheses.push(createHypothesis({caseId:c.id,statement:'The observed relationship is genuine.',confidence:.4,falsifier:'Independent evidence disproves the relationship.'}));
   saveState(state);
 }
+function refresh(){render(loadState());}
+function downloadText(name,text,type){const u=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),500);}
+function report(){const s=loadState();downloadText(reportFilename(s),buildProfessionalReport(s),'text/html');}
+function exportCase(){const s=loadState(),p=privacySummary(s);if(p.status==='BLOCK')throw new Error('Export blocked: potential secret-bearing fields detected.');downloadText('osint-enterprise-export.json',JSON.stringify(sanitizeForExport(s),null,2),'application/json');}
+function openModal(){ $('modal')?.classList.add('open');$('caseName')?.focus(); }
+function closeModal(){ $('modal')?.classList.remove('open'); }
+function showView(view){const selected=META[view]?view:'command';document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===`view-${selected}`));document.querySelectorAll('.nav button[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===selected));if($('pageTitle'))$('pageTitle').textContent=META[selected][0];if($('pageSub'))$('pageSub').textContent=META[selected][1];if(location.hash.slice(1)!==selected)history.replaceState(null,'',`#${selected}`);render(loadState());}
 
-function renderChallenge(state) {
-  const panel = $('challengeList'); if (!panel) return;
-  const result = buildShadowInvestigation(state);
-  const status = $('challengeStatus');
-  if (status) { status.textContent = String(result.integrityStatus || 'REVIEW').replaceAll('_', ' '); status.className = `tag ${result.integrityStatus === 'HIGH_RISK' ? 'bad' : result.integrityStatus === 'REVIEW' ? 'warn' : 'ok'}`; }
-  if ($('challengeHigh')) $('challengeHigh').textContent = String(result.highRiskCount || 0);
-  if ($('challengeMedium')) $('challengeMedium').textContent = String(result.mediumRiskCount || 0);
-  if ($('challengeTotal')) $('challengeTotal').textContent = String((result.findingCount || 0) + (result.falsificationGaps?.length || 0));
-  const rows = [...(result.findings || []).slice(0, 8).map(f => `<div class="row"><div><strong>${esc(f.type)}</strong><small>${esc(f.message)}</small></div><span class="tag ${f.severity === 'high' ? 'bad' : 'warn'}">${esc(String(f.severity || 'review').toUpperCase())}</span></div>`), ...(result.falsificationGaps || []).slice(0, 4).map(g => `<div class="row"><div><strong>FALSIFICATION GAP</strong><small>${esc(g.message)}</small></div><span class="tag warn">CHALLENGE</span></div>`)];
-  panel.innerHTML = rows.join('') || '<div class="row"><small>No current challenge signals.</small></div>';
+function renderChallenge(s){const p=$('challengeList');if(!p)return;const r=buildShadowInvestigation(s);const st=$('challengeStatus');if(st){st.textContent=String(r.integrityStatus||'REVIEW').replaceAll('_',' ');st.className=`tag ${r.integrityStatus==='HIGH_RISK'?'bad':r.integrityStatus==='REVIEW'?'warn':'ok'}`;}if($('challengeHigh'))$('challengeHigh').textContent=r.highRiskCount||0;if($('challengeMedium'))$('challengeMedium').textContent=r.mediumRiskCount||0;if($('challengeTotal'))$('challengeTotal').textContent=(r.findingCount||0)+(r.falsificationGaps?.length||0);const rows=[...(r.findings||[]).slice(0,8).map(f=>`<div class="row"><div><strong>${esc(f.type)}</strong><small>${esc(f.message)}</small></div><span class="tag ${f.severity==='high'?'bad':'warn'}">${esc(String(f.severity||'review').toUpperCase())}</span></div>`),...(r.falsificationGaps||[]).slice(0,4).map(g=>`<div class="row"><div><strong>FALSIFICATION GAP</strong><small>${esc(g.message)}</small></div><span class="tag warn">CHALLENGE</span></div>`)];p.innerHTML=rows.join('')||'<div class="row"><small>No current challenge signals.</small></div>';}
+function renderDecision(s){const p=$('decisionIntegrityList');if(!p)return;const ds=s.decisions||[];if(!ds.length){p.innerHTML='<div class="row"><div><strong>No decision submitted</strong><small>Move from evidence to a decision only after testing alternatives.</small></div><span class="tag warn">STANDBY</span></div>';return;}const d=ds.at(-1),r=evaluateDecision(d,s);p.innerHTML=`<div class="row"><div><strong>${esc(d.title)}</strong><small>${esc(r.status)} · score ${r.score}/100 · ${r.blockingReasons.length} blocker(s)</small></div><span class="tag ${r.status==='PASS'?'ok':r.status==='REVIEW'?'warn':'bad'}">${esc(r.status)}</span></div>`;}
+function renderMemory(s){const m=memorySummary(s);if($('memoryTotal'))$('memoryTotal').textContent=m.total||0;if($('memoryRecurring'))$('memoryRecurring').textContent=m.recurring||0;const p=$('memoryList');if(!p)return;p.innerHTML=extractInstitutionalMemory(s).slice(0,6).map(x=>`<div class="row"><div><strong>${esc(x.type)}</strong><small>${esc(x.pattern)}</small></div><span class="tag">${x.caseCount>1?'RECURRING':'NEW'}</span></div>`).join('')||'<div class="row"><small>No reusable patterns yet. This is expected for a new workspace.</small></div>';}
+function renderPre(s){const p=$('preInvestigationList');if(!p)return;const b=recommendPreInvestigationChecks(s.cases.at(-1)||{},s);p.innerHTML=b.recommendedChecks.slice(0,6).map(x=>`<div class="row"><div><strong>${esc(x.title)}</strong><small>${esc(x.reason)}</small></div><span class="tag">${b.memoryDerived?'MEMORY':'BASELINE'}</span></div>`).join('')||'<div class="row"><small>No pre-investigation controls generated.</small></div>';}
+
+function renderLists(s){
+  const c=$('casesList');if(c)c.innerHTML=s.cases.map(x=>`<article class="card data-card"><div class="row-head"><div><strong>${esc(x.title)}</strong><small>${esc(x.objective||'Objective pending')}</small><small>${esc(x.status)} · priority ${esc(x.priority)} · ${esc(x.id)}</small></div><span class="tag ${x.priority==='high'?'bad':x.priority==='low'?'ok':'warn'}">${esc(String(x.priority).toUpperCase())}</span></div><div class="actions"><button class="button" data-focus-case="${esc(x.id)}">Focus case</button></div></article>`).join('')||'<div class="empty"><strong>No investigations yet.</strong><small>Start with an objective, not a conclusion.</small><button class="button primary" data-action="new-case">Create first investigation</button></div>';
+  const e=$('evidenceList');if(e)e.innerHTML=s.evidence.map(x=>{const src=s.sources.find(z=>z.id===x.sourceId);return `<article class="card data-card"><div class="row-head"><div><strong>${esc(x.title)}</strong><small>${esc(x.claim)}</small><small>Source: ${esc(src?.name||'Unknown')} · confidence ${pct(x.confidence)}% · ${esc(x.status)}</small></div><span class="tag ${x.humanVerified?'ok':x.status==='CONTESTED'?'bad':'warn'}">${x.humanVerified?'VERIFIED':esc(x.status)}</span></div>${x.locator?`<div class="locator">${esc(x.locator)}</div>`:''}</article>`}).join('')||'<div class="empty"><strong>No evidence captured.</strong><small>Every claim should carry a source and an uncertainty status.</small><button class="button primary" data-action="new-evidence">Add evidence</button></div>';
+  const ent=$('entitiesList');if(ent){const rel=s.relationships||[];ent.innerHTML=`<div class="graph-shell"><div class="graph-head"><div><strong>Live relationship graph</strong><small>${s.entities.length} entities · ${rel.length} relationships</small></div><button class="button" data-action="fit-graph">Rebuild graph</button></div><div id="graphCanvas" class="graph-canvas"></div></div>`+s.entities.map(x=>`<article class="card data-card compact"><div class="row-head"><div><strong>${esc(x.name)}</strong><small>${esc(x.type)} · ${esc(x.id)}</small></div><span class="tag">ENTITY</span></div></article>`).join('')+(rel.length?`<div class="relationship-list">${rel.map(x=>{const a=s.entities.find(z=>z.id===x.fromEntityId),b=s.entities.find(z=>z.id===x.toEntityId);return `<div class="row"><div><strong>${esc(a?.name||'?')} → ${esc(b?.name||'?')}</strong><small>${esc(x.type)} · confidence ${pct(x.confidence)}% · ${esc(x.status)}</small></div><span class="tag warn">LINK</span></div>`}).join('')}</div>`:'<div class="empty"><strong>No relationships yet.</strong><small>Connections should be supported by evidence, not proximity.</small></div>');}
+  const h=$('hypothesesList');if(h)h.innerHTML=s.hypotheses.map(x=>`<article class="card data-card"><div class="row-head"><div><strong>${esc(x.statement)}</strong><small>Falsifier: ${esc(x.falsifier||'Not defined')}</small><small>${esc(x.status)} · confidence ${pct(x.confidence)}%</small></div><span class="tag">${pct(x.confidence)}%</span></div></article>`).join('')||'<div class="empty"><strong>No hypotheses.</strong><small>Keep at least one alternative explanation alive when the evidence is incomplete.</small><button class="button primary" data-action="new-hypothesis">Add hypothesis</button></div>';
+  const co=$('contradictionsList');if(co)co.innerHTML=s.contradictions.map(x=>`<article class="card data-card"><div class="row-head"><div><strong>${esc(x.type)}</strong><small>${esc(x.explanation||'Analyst review required.')}</small><small>${esc(x.status)} · ${esc(x.caseId)}</small></div><span class="tag ${x.severity==='high'?'bad':'warn'}">${esc(String(x.severity||'review').toUpperCase())}</span></div></article>`).join('')||'<div class="empty"><strong>No contradictions recorded.</strong><small>Run triage to actively search for conflicts instead of waiting for them.</small><button class="button primary" data-action="triage">Run triage</button></div>';
+  renderGraph(s);
 }
+function renderGraph(s){const p=$('graphCanvas');if(!p)return;const ns=s.entities.slice(0,12),rs=s.relationships||[];if(!ns.length){p.innerHTML='<div class="graph-empty">No entities. Add one to activate the graph.</div>';return;}const w=900,h=280,cx=w/2,cy=h/2,r=Math.min(100,Math.max(55,ns.length*14));const pos=new Map(ns.map((n,i)=>[n.id,{x:cx+r*Math.cos(i*2*Math.PI/ns.length),y:cy+r*.65*Math.sin(i*2*Math.PI/ns.length)}]));const lines=rs.map(x=>{const a=pos.get(x.fromEntityId),b=pos.get(x.toEntityId);return a&&b?`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="edge"/>`:''}).join('');const nodes=ns.map(n=>{const p=pos.get(n.id);return `<g><circle cx="${p.x}" cy="${p.y}" r="22" class="node"/><text x="${p.x}" y="${p.y+4}" text-anchor="middle">${esc(n.name).slice(0,12)}</text></g>`}).join('');p.innerHTML=`<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Evidence relationship graph">${lines}${nodes}</svg><div class="graph-legend"><span>● Entity</span><span>— Relationship</span><span>Links shown only when both endpoints are known</span></div>`;}
+function renderTemporal(s){const p=$('temporalIntegrityList');if(!p)return;const f=temporalAnalysis(s);if($('temporalCount'))$('temporalCount').textContent=f.length;if($('temporalStatus')){$('temporalStatus').textContent=f.length?'REVIEW TIMELINE':'NO TEMPORAL SIGNAL';$('temporalStatus').className=`tag ${f.length?'warn':'ok'}`;}p.innerHTML=f.slice(0,8).map(x=>`<div class="row"><div><strong>${esc(String(x.type||'').replaceAll('_',' '))}</strong><small>${esc(x.message)}</small><small>${esc(x.earlierDate)} → ${esc(x.laterDate)}</small></div><span class="tag warn">MEDIUM</span></div>`).join('')||'<div class="row"><small>No temporal discrepancies detected.</small></div>';const t=$('temporalTimeline');if(t)t.innerHTML=buildTemporalTimeline(s,s.cases.at(-1)?.id).slice(0,10).map(x=>`<div class="row"><div><strong>${esc(x.title||'Evidence')}</strong><small>${esc(x.date)} · ${esc(x.claim)}</small></div><span class="tag">${esc(x.status)}</span></div>`).join('')||'<div class="row"><small>No timeline entries yet.</small></div>';}
+function renderReports(s){const p=$('reportPreview');if(!p)return;const m=calculateMetrics(s),r=buildShadowInvestigation(s),v=validateState(s);p.innerHTML=`<div class="report-grid"><div><span class="ey">ASSESSMENT</span><strong>${s.cases.length?'Ready to draft':'Awaiting case'}</strong><small>${s.cases.length?`Current workspace contains ${s.evidence.length} evidence items and ${s.hypotheses.length} hypotheses.`:'Create an investigation before producing a professional assessment.'}</small></div><div><span class="ey">INTEGRITY</span><strong>${m.verified||0}%</strong><small>${m.contradictions||0} contradiction(s) currently recorded.</small></div><div><span class="ey">CHALLENGE</span><strong>${r.findingCount||0}</strong><small>${r.integrityStatus||'REVIEW'} challenge findings.</small></div><div><span class="ey">VALIDATION</span><strong>${v.valid?'PASS':'REVIEW'}</strong><small>${(v.errors||[]).length} errors · ${(v.warnings||[]).length} warnings.</small></div></div><div class="actions"><button class="button primary" data-action="create-report">Generate professional report</button><button class="button" data-action="preview-json">Show sanitized export summary</button></div>`;}
+function renderGovernance(s){const p=$('governanceResult');if(!p)return;const v=validateState(s),pr=privacySummary(s);p.innerHTML=`<div class="governance-grid"><div><span class="ey">STATE</span><strong>${v.valid?'VALID':'REVIEW REQUIRED'}</strong><small>${(v.errors||[]).length} errors · ${(v.warnings||[]).length} warnings</small></div><div><span class="ey">PRIVACY</span><strong>${esc(pr.status||'LOCAL')}</strong><small>Browser-local state; exports are sanitized and secret-bearing fields are blocked.</small></div><div><span class="ey">AUDIT</span><strong>${s.audit?.length||0}</strong><small>Local creation/update events retained with the case state.</small></div></div><div class="validation-list">${[...(v.errors||[]),...(v.warnings||[])].slice(0,20).map(x=>`<div class="row"><small>${esc(typeof x==='string'?x:JSON.stringify(x))}</small></div>`).join('')||'<div class="row"><small>No validation findings. Governance boundary is clean.</small></div>'}</div>`;}
+function render(s){const m=calculateMetrics(s);[['cases',m.cases],['evidence',m.evidence],['hypotheses',m.hypotheses],['contradictions',m.contradictions]].forEach(([k,v])=>{if($(`metric-${k}`))$(`metric-${k}`).textContent=String(v).padStart(2,'0');});[['verifiedPct',m.verified],['corroboratedPct',m.corroborated],['aiPct',m.aiAssisted]].forEach(([k,v])=>{if($(k))$(k).textContent=`${v}%`;if($(`${k}Bar`))$(`${k}Bar`).style.width=`${v}%`;});if($('caseList'))$('caseList').innerHTML=s.cases.slice(-6).reverse().map(x=>`<div class="row"><div><strong>${esc(x.title)}</strong><small>${esc(x.objective||'Objective pending')}</small></div><span class="tag ${x.priority==='high'?'bad':x.priority==='low'?'ok':'warn'}">${esc(String(x.priority||'medium').toUpperCase())}</span></div>`).join('')||'<div class="row"><small>No investigations yet.</small></div>';renderChallenge(s);renderDecision(s);renderMemory(s);renderPre(s);renderLists(s);renderTemporal(s);renderReports(s);renderGovernance(s);}
 
-function renderDecision(state) {
-  const panel = $('decisionIntegrityList'); if (!panel) return;
-  const decisions = state.decisions || [];
-  if (!decisions.length) { panel.innerHTML = '<div class="row"><div><strong>No decision submitted</strong><small>Create a decision after testing the evidence.</small></div><span class="tag warn">STANDBY</span></div>'; return; }
-  const decision = decisions[decisions.length - 1]; const result = evaluateDecision(decision, state);
-  panel.innerHTML = `<div class="row"><div><strong>${esc(decision.title)}</strong><small>${esc(result.status)} · score ${result.score}/100 · ${result.blockingReasons.length} blocker(s)</small></div><span class="tag ${result.status === 'PASS' ? 'ok' : result.status === 'REVIEW' ? 'warn' : 'bad'}">${esc(result.status)}</span></div>`;
+function newEvidence(){const s=loadState();if(!s.cases.length)return alert('Create a case first.');const title=prompt('Evidence title');if(!title?.trim())return;const claim=prompt('Observed claim');if(!claim?.trim())return;const locator=prompt('Source URL / locator (optional)')||'';let src=s.sources.find(x=>x.locator===locator);if(!src){src=createSource({name:locator||'Analyst-entered source',locator,reliability:.5,independenceGroup:locator||`manual-${Date.now()}`});addRecord('sources',src);}addRecord('evidence',createEvidence({caseId:s.cases.at(-1).id,sourceId:src.id,title:title.trim(),claim:claim.trim(),locator,status:'UNKNOWN',confidence:.5}));refresh();}
+function newEntity(){const name=prompt('Entity name');if(!name?.trim())return;const type=prompt('Type: person, organization, company, asset, location, event, unknown','unknown')||'unknown';addRecord('entities',createEntity({name:name.trim(),type:type.trim()||'unknown'}));refresh();showView('entities');}
+function newHypothesis(){const s=loadState();if(!s.cases.length)return alert('Create a case first.');const statement=prompt('Hypothesis statement');if(!statement?.trim())return;const falsifier=prompt('What evidence would falsify it?')||'';addRecord('hypotheses',createHypothesis({caseId:s.cases.at(-1).id,statement:statement.trim(),falsifier:falsifier.trim(),confidence:.5}));refresh();}
+function runTriage(){const f=contradictionTriage(loadState());f.forEach(x=>addRecord('contradictions',x));refresh();return f;}
+function runValidation(){renderGovernance(loadState());return validateState(loadState());}
+function createDecisionFromUI(){const s=loadState();if(!s.cases.length)return alert('Create a case first.');const title=prompt('Decision title');if(!title?.trim())return;const statement=prompt('Decision statement');if(!statement?.trim())return;addRecord('decisions',createDecision({caseId:s.cases.at(-1).id,title:title.trim(),statement:statement.trim(),rationale:'Analyst-entered decision; review before approval.'}));refresh();}
+function bind(){
+ document.querySelectorAll('.nav button[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+ $('newCase')?.addEventListener('click',openModal);$('casesNew')?.addEventListener('click',openModal);$('close')?.addEventListener('click',closeModal);$('modal')?.addEventListener('click',e=>{if(e.target===$('modal'))closeModal()});
+ $('create')?.addEventListener('click',()=>{const t=$('caseName')?.value.trim();if(!t)return;addRecord('cases',createCase({title:t,objective:'Define the investigation objective before collecting evidence.',priority:'medium'}));$('caseName').value='';closeModal();showView('cases');});
+ $('audit')?.addEventListener('click',()=>{const n=runTriage().length;showView('contradictions');alert(`${n} contradiction candidate(s) generated.`)});
+ $('challenge')?.addEventListener('click',()=>{$('challengePanel')?.scrollIntoView({behavior:'smooth'});renderChallenge(loadState())});
+ $('report')?.addEventListener('click',report);$('reportSecondary')?.addEventListener('click',report);$('reportWorkspace')?.addEventListener('click',report);$('export')?.addEventListener('click',()=>{try{exportCase()}catch(e){alert(e.message)}});
+ $('evidenceNew')?.addEventListener('click',newEvidence);$('entityNew')?.addEventListener('click',newEntity);$('hypothesisNew')?.addEventListener('click',newHypothesis);$('contradictionRun')?.addEventListener('click',()=>{runTriage();showView('contradictions')});$('validateWorkspace')?.addEventListener('click',runValidation);
+ document.addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(!a)return;const act=a.dataset.action;if(act==='new-case')openModal();if(act==='new-evidence')newEvidence();if(act==='new-entity')newEntity();if(act==='new-hypothesis')newHypothesis();if(act==='triage'){runTriage();showView('contradictions');}if(act==='create-report')report();if(act==='preview-json')alert(JSON.stringify(sanitizeForExport(loadState()),null,2).slice(0,5000));if(act==='fit-graph')renderGraph(loadState());});
+ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('commandSearch')?.focus();}if(e.key==='Escape')closeModal();});
+ $('commandSearch')?.addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();document.querySelectorAll('.data-card').forEach(c=>c.style.display=!q||c.textContent.toLowerCase().includes(q)?'':'none');});
+ window.addEventListener('hashchange',()=>showView(location.hash.slice(1)||'command'));
 }
-
-function renderMemory(state) {
-  const summary = memorySummary(state);
-  if ($('memoryTotal')) $('memoryTotal').textContent = String(summary.total || 0);
-  if ($('memoryRecurring')) $('memoryRecurring').textContent = String(summary.recurring || 0);
-  const panel = $('memoryList'); if (!panel) return;
-  panel.innerHTML = extractInstitutionalMemory(state).slice(0, 6).map(item => `<div class="row"><div><strong>${esc(item.type)}</strong><small>${esc(item.pattern)}</small></div><span class="tag">${item.caseCount > 1 ? 'RECURRING' : 'NEW'}</span></div>`).join('') || '<div class="row"><small>No reusable patterns yet.</small></div>';
-}
-
-function renderPre(state) {
-  const panel = $('preInvestigationList'); if (!panel) return;
-  const currentCase = state.cases[state.cases.length - 1] || {};
-  const brief = recommendPreInvestigationChecks(currentCase, state);
-  panel.innerHTML = brief.recommendedChecks.slice(0, 5).map(item => `<div class="row"><div><strong>${esc(item.title)}</strong><small>${esc(item.reason)}</small></div><span class="tag">${brief.memoryDerived ? 'MEMORY' : 'BASELINE'}</span></div>`).join('') || '<div class="row"><small>No checks generated.</small></div>';
-}
-
-function renderLists(state) {
-  const cases = $('casesList');
-  if (cases) cases.innerHTML = state.cases.map(item => `<div class="card" style="margin-bottom:10px"><div class="row"><div><strong>${esc(item.title)}</strong><small>${esc(item.objective || 'Objective pending')} · ${esc(item.status)} · ${esc(item.priority)}</small></div></div></div>`).join('') || '<div class="empty">No cases.</div>';
-  const evidence = $('evidenceList');
-  if (evidence) evidence.innerHTML = state.evidence.map(item => { const source = state.sources.find(s => s.id === item.sourceId); return `<div class="card" style="margin-bottom:10px"><div class="row"><div><strong>${esc(item.title)}</strong><small>${esc(item.claim)}</small><small>Source: ${esc(source?.name || 'Unknown')} · Confidence: ${Math.round((item.confidence || 0) * 100)}%</small></div><span class="tag">${esc(item.status)}</span></div></div>`; }).join('') || '<div class="empty">No evidence.</div>';
-  const entities = $('entitiesList');
-  if (entities) { const relationships = state.relationships || []; const entityRows = state.entities.map(item => `<div class="row"><div><strong>${esc(item.name)}</strong><small>${esc(item.type)}</small></div><span class="tag">ENTITY</span></div>`); const relationshipRows = relationships.map(item => { const from = state.entities.find(e => e.id === item.fromEntityId); const to = state.entities.find(e => e.id === item.toEntityId); return `<div class="row"><div><strong>${esc(from?.name || '?')} → ${esc(to?.name || '?')}</strong><small>${esc(item.type || 'relationship')} · ${Math.round((item.confidence || 0) * 100)}%</small></div><span class="tag warn">RELATIONSHIP</span></div>`; }); entities.innerHTML = [...entityRows, ...relationshipRows].join('') || '<div class="empty">No entities or relationships.</div>'; }
-  const hypotheses = $('hypothesesList');
-  if (hypotheses) hypotheses.innerHTML = state.hypotheses.map(item => `<div class="card" style="margin-bottom:10px"><div class="row"><div><strong>${esc(item.statement)}</strong><small>Falsifier: ${esc(item.falsifier || 'Not defined')}</small></div><span class="tag">${Math.round((item.confidence || 0) * 100)}%</span></div></div>`).join('') || '<div class="empty">No hypotheses.</div>';
-  const contradictions = $('contradictionsList');
-  if (contradictions) contradictions.innerHTML = state.contradictions.map(item => `<div class="card" style="margin-bottom:10px"><div class="row"><div><strong>${esc(item.type)}</strong><small>${esc(item.explanation || 'Analyst review required.')}</small></div><span class="tag warn">${esc(String(item.severity || 'review').toUpperCase())}</span></div></div>`).join('') || '<div class="empty">No contradictions currently recorded.</div>';
-}
-
-function renderTemporal(state) {
-  const panel = $('temporalIntegrityList'); if (!panel) return;
-  const findings = temporalAnalysis(state);
-  if ($('temporalCount')) $('temporalCount').textContent = String(findings.length);
-  if ($('temporalStatus')) { const has = findings.length > 0; $('temporalStatus').textContent = has ? 'REVIEW TIMELINE' : 'NO TEMPORAL SIGNAL'; $('temporalStatus').className = `tag ${has ? 'warn' : 'ok'}`; }
-  panel.innerHTML = findings.slice(0, 8).map(f => `<div class="row"><div><strong>${esc(String(f.type || '').replaceAll('_', ' '))}</strong><small>${esc(f.message)}</small><small>${esc(f.earlierDate)} → ${esc(f.laterDate)}</small></div><span class="tag warn">MEDIUM</span></div>`).join('') || '<div class="row"><small>No temporal discrepancies detected.</small></div>';
-  const timeline = $('temporalTimeline'); if (!timeline) return;
-  const caseId = state.cases.find(c => String(c.title).toLowerCase().includes('berill'))?.id;
-  timeline.innerHTML = buildTemporalTimeline(state, caseId).slice(0, 10).map(x => `<div class="row"><div><strong>${esc(x.title || 'Evidence')}</strong><small>${esc(x.date)} · ${esc(x.claim)}</small></div><span class="tag">${esc(x.status)}</span></div>`).join('') || '<div class="row"><small>Timeline unavailable.</small></div>';
-}
-
-function render(state) {
-  const metrics = calculateMetrics(state);
-  [['cases', metrics.cases], ['evidence', metrics.evidence], ['hypotheses', metrics.hypotheses], ['contradictions', metrics.contradictions]].forEach(([key, value]) => { const element = $(`metric-${key}`); if (element) element.textContent = String(value).padStart(2, '0'); });
-  ['verifiedPct', 'corroboratedPct', 'aiPct'].forEach(key => { const element = $(key); if (!element) return; element.textContent = `${metrics[key]}%`; const bar = $(`${key}Bar`); if (bar) bar.style.width = `${metrics[key]}%`; });
-  const queue = $('caseList'); if (queue) queue.innerHTML = state.cases.slice(-6).reverse().map(item => `<div class="row"><div><strong>${esc(item.title)}</strong><small>${esc(item.id)} · ${esc(item.status)}</small></div><span class="tag ${item.priority === 'high' ? 'bad' : item.priority === 'low' ? 'ok' : 'warn'}">${esc(String(item.priority || 'medium').toUpperCase())}</span></div>`).join('') || '<div class="row"><small>No investigations yet.</small></div>';
-  renderChallenge(state); renderDecision(state); renderMemory(state); renderPre(state); renderLists(state); renderTemporal(state);
-}
-
-function showView(view) {
-  const selected = META[view] ? view : 'command';
-  document.querySelectorAll('.view').forEach(element => element.classList.toggle('active', element.id === `view-${selected}`));
-  document.querySelectorAll('.nav button[data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === selected));
-  if ($('pageTitle')) $('pageTitle').textContent = META[selected][0];
-  if ($('pageSub')) $('pageSub').textContent = META[selected][1];
-  if (location.hash.slice(1) !== selected) history.replaceState(null, '', `#${selected}`);
-  render(loadState());
-}
-
-function refresh() { render(loadState()); }
-function downloadText(name, text, type) { const url = URL.createObjectURL(new Blob([text], { type })); const anchor = document.createElement('a'); anchor.href = url; anchor.download = name; document.body.appendChild(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 500); }
-function createProfessionalReport() { const state = loadState(); downloadText(reportFilename(state), buildProfessionalReport(state), 'text/html'); }
-function exportCase() { const state = loadState(); const privacy = privacySummary(state); if (privacy.status === 'BLOCK') throw new Error('Export blocked: potential secret-bearing fields detected.'); downloadText('osint-enterprise-export.json', JSON.stringify(sanitizeForExport(state), null, 2), 'application/json'); }
-function openModal() { $('modal')?.classList.add('open'); $('caseName')?.focus(); }
-function closeModal() { $('modal')?.classList.remove('open'); }
-
-function newEvidence() {
-  const state = loadState(); if (!state.cases.length) return alert('Create a case first.');
-  const title = prompt('Evidence title'); if (!title?.trim()) return;
-  const claim = prompt('Observed claim'); if (!claim?.trim()) return;
-  const locator = prompt('Source URL / locator (optional)') || '';
-  let source = state.sources.find(item => item.locator === locator);
-  if (!source) { source = createSource({ name: locator || 'Analyst-entered source', locator, reliability: 0.5, independenceGroup: locator || `manual-${Date.now()}` }); addRecord('sources', source); }
-  addRecord('evidence', createEvidence({ caseId: state.cases[state.cases.length - 1].id, sourceId: source.id, title: title.trim(), claim: claim.trim(), locator, status: 'UNKNOWN', confidence: 0.5 })); refresh();
-}
-function newEntity() { const name = prompt('Entity name'); if (!name?.trim()) return; const type = prompt('Type: person, organization, company, asset, location, event, unknown', 'unknown') || 'unknown'; addRecord('entities', createEntity({ name: name.trim(), type: type.trim() || 'unknown' })); refresh(); }
-function newHypothesis() { const state = loadState(); if (!state.cases.length) return alert('Create a case first.'); const statement = prompt('Hypothesis statement'); if (!statement?.trim()) return; const falsifier = prompt('What evidence would falsify it?') || ''; addRecord('hypotheses', createHypothesis({ caseId: state.cases[state.cases.length - 1].id, statement: statement.trim(), falsifier: falsifier.trim(), confidence: 0.5 })); refresh(); }
-function runTriage() { const findings = contradictionTriage(loadState()); findings.forEach(item => addRecord('contradictions', item)); refresh(); return findings; }
-function runValidation() { const result = validateState(loadState()); const panel = $('governanceResult'); if (panel) { const errors = result.errors || []; const warnings = result.warnings || []; panel.innerHTML = `<strong>${result.valid ? 'VALIDATION PASSED' : 'VALIDATION FAILED'}</strong><p class="sub">${errors.length} error(s) · ${warnings.length} warning(s)</p>${errors.concat(warnings).slice(0, 20).map(item => `<div class="row"><small>${esc(typeof item === 'string' ? item : JSON.stringify(item))}</small></div>`).join('')}`; } return result; }
-
-function bindEvents() {
-  document.querySelectorAll('.nav button[data-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
-  $('newCase')?.addEventListener('click', openModal); $('casesNew')?.addEventListener('click', openModal); $('close')?.addEventListener('click', closeModal);
-  $('modal')?.addEventListener('click', event => { if (event.target === $('modal')) closeModal(); });
-  $('create')?.addEventListener('click', () => { const title = $('caseName')?.value.trim(); if (!title) return; addRecord('cases', createCase({ title, objective: 'Define the investigation objective before collecting evidence.', priority: 'medium' })); if ($('caseName')) $('caseName').value = ''; closeModal(); showView('cases'); });
-  $('audit')?.addEventListener('click', () => alert(`${runTriage().length} contradiction candidate(s) generated.`));
-  $('challenge')?.addEventListener('click', () => { $('challengePanel')?.scrollIntoView({ behavior: 'smooth' }); renderChallenge(loadState()); });
-  $('report')?.addEventListener('click', createProfessionalReport); $('reportSecondary')?.addEventListener('click', createProfessionalReport); $('reportWorkspace')?.addEventListener('click', createProfessionalReport);
-  $('export')?.addEventListener('click', () => { try { exportCase(); } catch (error) { alert(error.message); } });
-  $('evidenceNew')?.addEventListener('click', newEvidence); $('entityNew')?.addEventListener('click', newEntity); $('hypothesisNew')?.addEventListener('click', newHypothesis);
-  $('contradictionRun')?.addEventListener('click', () => { runTriage(); showView('contradictions'); }); $('validateWorkspace')?.addEventListener('click', runValidation);
-  window.addEventListener('hashchange', () => showView(location.hash.slice(1) || 'command'));
-}
-
-window.osintEnterprise = {
-  getState: () => structuredClone(loadState()), validate: () => validateState(loadState()), privacy: () => privacySummary(loadState()),
-  createCase: input => { const record = addRecord('cases', createCase(input)); refresh(); return record; },
-  createEvidence: input => { const record = addRecord('evidence', createEvidence(input)); refresh(); return record; },
-  createDecision: input => { const record = addRecord('decisions', createDecision(input)); refresh(); return record; },
-  evaluateDecision: input => { const state = loadState(); const decision = typeof input === 'string' ? state.decisions?.find(item => item.id === input) : input; if (!decision) throw new Error('Decision not found.'); return evaluateDecision(decision, state); },
-  transitionDecision: (input, nextState) => { const state = loadState(); const decision = typeof input === 'string' ? state.decisions?.find(item => item.id === input) : input; if (!decision) throw new Error('Decision not found.'); const transitioned = transitionDecision(decision, nextState, state); if (typeof input === 'string') { state.decisions[state.decisions.findIndex(item => item.id === decision.id)] = transitioned; saveState(state); refresh(); } return transitioned; },
-  institutionalMemory: () => extractInstitutionalMemory(loadState()), queryInstitutionalMemory: query => queryInstitutionalMemory(loadState(), query), memorySummary: () => memorySummary(loadState()),
-  preInvestigationBrief: input => recommendPreInvestigationChecks(input || {}, loadState()), createProfessionalReport, triage: runTriage,
-  shadowInvestigation: () => buildShadowInvestigation(loadState()), temporalAnalysis: () => temporalAnalysis(loadState()), temporalTimeline: caseId => buildTemporalTimeline(loadState(), caseId), exportCase, showView
-};
-
-function boot() { const state = loadState(); seed(state); bindEvents(); const requestedView = location.hash.slice(1); showView(META[requestedView] ? requestedView : 'command'); }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
+window.osintEnterprise={getState:()=>structuredClone(loadState()),validate:()=>validateState(loadState()),privacy:()=>privacySummary(loadState()),createCase:i=>{const r=addRecord('cases',createCase(i));refresh();return r;},createDecisionFromUI,createProfessionalReport:report,triage:runTriage,shadowInvestigation:()=>buildShadowInvestigation(loadState()),temporalAnalysis:()=>temporalAnalysis(loadState()),temporalTimeline:id=>buildTemporalTimeline(loadState(),id),exportCase,showView};
+function boot(){const s=loadState();seed(s);bind();showView(META[location.hash.slice(1)]?location.hash.slice(1):'command');}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
