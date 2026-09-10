@@ -2,24 +2,63 @@
 
 ## Enterprise Intelligence Operating System
 
-OSINT Command Center is an enterprise-oriented intelligence platform designed to unify open-source intelligence, evidence management, investigation workflows, knowledge management, and AI-assisted analysis in one operational environment.
+OSINT Command Center is an evidence-first intelligence operating system for structured investigations. It connects evidence, provenance, entities, relationships, hypotheses, contradictions, uncertainty, counter-narratives and decision support.
 
-The platform is built around a core principle: intelligence systems should not merely produce conclusions — they should continuously challenge them.
+> **Find the signal. Trace the evidence. Challenge the conclusion.**
 
-### Core architecture
+### What is implemented now
 
-- Evidence-to-Decision Engine
-- Counter-Narrative Engine
-- Evidence and relationship graph
-- Source reliability and provenance tracking
-- Hypothesis and contradiction management
-- Uncertainty and confidence modelling
-- AI reasoning audit and human oversight
-- Investigation workflow orchestration
-- Enterprise reporting and decision support
+The GitHub Pages application contains a working browser-local intelligence foundation:
 
-### Design principle
+- Case creation and persistence with `localStorage`
+- Structured evidence, source, entity, relationship, hypothesis and contradiction models
+- Evidence status and confidence fields
+- Source reliability and independence metadata
+- Deterministic contradiction triage
+- Counter-narrative / falsifier fields for hypotheses
+- AI-assisted evidence attribution with explicit human-review semantics
+- Audit-event model for changes
+- Live Command Center metrics derived from stored state
+- GitHub Actions JavaScript/architecture quality gate
+- GitHub Pages deployment pipeline
 
-**Find the signal. Trace the evidence. Challenge the conclusion.**
+### Analytical rule
 
-The long-term goal is a modular intelligence operating system capable of supporting professional analysts, security teams, investigators, researchers, journalists, and decision-makers.
+The system distinguishes:
+
+- **FACT** — directly supported by traceable evidence
+- **INFERENCE** — interpretation derived from evidence
+- **ASSUMPTION** — working premise, not established
+- **UNKNOWN** — insufficient evidence
+- **CONTESTED** — credible evidence conflicts with the claim
+
+**A plausible conclusion is never automatically an established fact.**
+
+### Architecture
+
+`Case → Evidence → Source → Entity → Relationship → Hypothesis → Contradiction → Confidence → Decision → Report`
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the domain specification and production boundary.
+
+### Production boundary
+
+The current deployment is intentionally client-side and uses browser-local storage. It is a functional foundation, not a claim of production security. A production deployment must move sensitive data behind an authenticated server/API and add authorization, encrypted storage, immutable audit logging, secure secret management, backups, and controlled source acquisition.
+
+No API keys, credentials or secrets belong in the static site.
+
+### Repository structure
+
+```text
+.
+├── index.html
+├── ARCHITECTURE.md
+├── src/
+│   ├── app.js
+│   └── core/
+│       ├── model.js
+│       ├── store.js
+│       └── engine.js
+└── .github/workflows/
+    ├── pages.yml
+    └── quality.yml
+```
