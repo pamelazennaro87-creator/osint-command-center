@@ -26,9 +26,21 @@ function render() {
   ['verifiedPct','corroboratedPct','aiPct'].forEach(k=>{const el=$(k); if(el){el.textContent=`${m[k]}%`; const bar=$(k+'Bar'); if(bar)bar.style.width=`${m[k]}%`;}});
   const list=$('caseList');
   if(list) list.innerHTML = state.cases.slice(-6).reverse().map(c=>`<div class="row"><div><strong>${escapeHtml(c.title)}</strong><small>${escapeHtml(c.id)} · ${escapeHtml(c.status)}</small></div><span class="tag ${c.priority==='high'?'bad':c.priority==='low'?'ok':'warn'}">${escapeHtml(c.priority.toUpperCase())}</span></div>`).join('') || '<div class="row"><small>No investigations yet.</small></div>';
+  renderChallenge();
 }
+function renderChallenge(){
+  const panel=$('challengeList'); if(!panel) return;
+  const shadow=buildShadowInvestigation(loadState());
+  const items=shadow.findings.slice(0,8);
+  const gaps=shadow.falsificationGaps.slice(0,4);
+  if(!items.length && !gaps.length){ panel.innerHTML='<div class="row"><div><strong>No challenge signals</strong><small>The shadow investigation found no current guardrail breach. Absence of a signal is not proof of correctness.</small></div><span class="tag ok">CLEAR</span></div>'; return; }
+  const rows=[...items.map(f=>`<div class="row"><div><strong>${escapeHtml(formatType(f.type))}</strong><small>${escapeHtml(f.message)}</small></div><span class="tag ${f.severity==='high'?'bad':f.severity==='medium'?'warn':'ok'}">${escapeHtml((f.severity||'review').toUpperCase())}</span></div>`),...gaps.map(g=>`<div class="row"><div><strong>FALSIFICATION GAP</strong><small>${escapeHtml(g.message)}</small></div><span class="tag warn">CHALLENGE</span></div>` )];
+  panel.innerHTML=rows.join('');
+}
+function formatType(v){return String(v||'signal').replaceAll('_',' ');}
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function refresh(){ Object.assign(state,loadState()); render(); }
+function downloadText(filename,text,type='text/plain'){ const blob=new Blob([text],{type}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); }
 
 window.osintEnterprise = {
   getState: () => structuredClone(loadState()),
@@ -36,7 +48,8 @@ window.osintEnterprise = {
   createCase: input => { const r=addRecord('cases',createCase(input)); refresh(); return r; },
   createEvidence: input => { const r=addRecord('evidence',createEvidence(input)); refresh(); return r; },
   triage: () => { const findings=contradictionTriage(loadState()); findings.forEach(f=>addRecord('contradictions',f)); refresh(); return findings; },
-  shadowInvestigation: () => buildShadowInvestigation(loadState())
+  shadowInvestigation: () => buildShadowInvestigation(loadState()),
+  exportCase: () => downloadText('osint-enterprise-export.json',JSON.stringify(loadState(),null,2),'application/json')
 };
 
 seed();
@@ -51,5 +64,13 @@ $('create')?.addEventListener('click',()=>{
 $('audit')?.addEventListener('click',()=>{
   const findings=window.osintEnterprise.triage();
   const shadow=window.osintEnterprise.shadowInvestigation();
+  renderChallenge();
   alert(`${findings.length} contradiction candidate(s) generated. Shadow investigation found ${shadow.findingCount} reasoning-drift signal(s).`);
 });
+$('challenge')?.addEventListener('click',()=>{
+  const shadow=window.osintEnterprise.shadowInvestigation();
+  renderChallenge();
+  $('challengePanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+  if(!shadow.findingCount && !shadow.falsificationGaps.length) alert('Shadow investigation clear: no current drift signal detected. This is not proof of correctness.');
+});
+$('export')?.addEventListener('click',()=>window.osintEnterprise.exportCase());
