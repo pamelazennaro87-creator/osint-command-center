@@ -4,6 +4,7 @@ export const GATE_STATUS = Object.freeze(['PASS', 'REVIEW', 'BLOCKED']);
 
 const findingTypes = new Set(['AI_GUARDRAIL', 'SOURCE_DEPENDENCY', 'CONFIDENCE_DRIFT', 'CLAIM_CONFLICT', 'OPPOSITION_GAP']);
 const VALID_FALSIFIER_RESULTS = new Set(['supported', 'failed', 'inconclusive', 'not_triggered', 'triggered', 'disproved']);
+const VALID_DECISION_STATES = new Set(['draft', 'review', 'approved', 'rejected', 'superseded']);
 
 function check(id, label, status, message) { return { id, label, status, message }; }
 
@@ -103,4 +104,17 @@ export function evaluateDecision(decision, state = {}) {
     blockingReasons: [...new Set(blockingReasons)],
     warnings: [...new Set(warnings)]
   };
+}
+
+export function transitionDecision(decision, nextState, state = {}) {
+  const target = String(nextState || '').toLowerCase();
+  if (!VALID_DECISION_STATES.has(target)) throw new Error(`Invalid decision state: ${nextState}`);
+  const current = decision || {};
+  if (target === 'approved') {
+    const gate = evaluateDecision({ ...current, state: 'review' }, state);
+    if (gate.status !== 'PASS') {
+      throw new Error(`Decision approval blocked by integrity gate: ${gate.status}. ${gate.blockingReasons.join(' ')}`);
+    }
+  }
+  return { ...current, state: target, updatedAt: new Date().toISOString() };
 }
