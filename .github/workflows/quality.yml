@@ -62,4 +62,5 @@ jobs:
           grep -q 'type="module" src="./src/super-ui.js"' index.html
           grep -q 'type="module" src="./src/tools/lab-ui.js"' index.html
           grep -q 'type="module" src="./src/core/i18n.js"' index.html
-          grep -q 'type="module" src="./src/daid-ui.js"' index.html
+          grep -q "daid-ui.js" src/core/i18n.js
+          grep -q "investigation-loop.js" src/daid-ui.js
