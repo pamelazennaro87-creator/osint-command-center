@@ -3,6 +3,7 @@ import { loadState, saveState, addRecord } from './core/store.js';
 import { calculateMetrics, contradictionTriage } from './core/engine.js';
 import { buildShadowInvestigation } from './core/drift.js';
 import { evaluateDecision } from './core/decision.js';
+import { extractInstitutionalMemory, memorySummary, queryInstitutionalMemory } from './core/memory.js';
 import { validateState } from './core/validation.js';
 
 const $ = id => document.getElementById(id);
@@ -27,7 +28,7 @@ function render() {
   ['verifiedPct','corroboratedPct','aiPct'].forEach(k=>{const el=$(k); if(el){el.textContent=`${m[k]}%`; const bar=$(k+'Bar'); if(bar)bar.style.width=`${m[k]}%`;}});
   const list=$('caseList');
   if(list) list.innerHTML = state.cases.slice(-6).reverse().map(c=>`<div class="row"><div><strong>${escapeHtml(c.title)}</strong><small>${escapeHtml(c.id)} · ${escapeHtml(c.status)}</small></div><span class="tag ${c.priority==='high'?'bad':c.priority==='low'?'ok':'warn'}">${escapeHtml(c.priority.toUpperCase())}</span></div>`).join('') || '<div class="row"><small>No investigations yet.</small></div>';
-  renderChallenge();
+  renderChallenge(); renderDecisionIntegrity(); renderMemory();
 }
 function renderChallenge(){
   const shadow=buildShadowInvestigation(loadState());
@@ -40,6 +41,23 @@ function renderChallenge(){
   const rows=[...items.map(f=>`<div class="row"><div><strong>${escapeHtml(formatType(f.type))}</strong><small>${escapeHtml(f.message)} · Repair: ${escapeHtml(f.repairMode||'ANALYST_REVIEW')}</small></div><span class="tag ${f.severity==='high'?'bad':f.severity==='medium'?'warn':'ok'}">${escapeHtml((f.severity||'review').toUpperCase())}</span></div>`),...gaps.map(g=>`<div class="row"><div><strong>FALSIFICATION GAP</strong><small>${escapeHtml(g.message)} · Repair: ${escapeHtml(g.repairMode)}</small></div><span class="tag warn">CHALLENGE</span></div>` )];
   panel.innerHTML=rows.join('');
 }
+function renderDecisionIntegrity(){
+  const panel=$('decisionIntegrityList'); if(!panel) return;
+  const decisions=Array.isArray(state.decisions)?state.decisions:[];
+  if(!decisions.length){ panel.innerHTML='<div class="row"><div><strong>No decision submitted</strong><small>Decision Integrity Gate activates when a decision is linked to hypotheses and evidence.</small></div><span class="tag warn">STANDBY</span></div>'; return; }
+  const decision=decisions[decisions.length-1]; const result=evaluateDecision(decision,state);
+  const cls=result.status==='PASS'?'ok':result.status==='REVIEW'?'warn':'bad';
+  panel.innerHTML=`<div class="row"><div><strong>${escapeHtml(decision.title)}</strong><small>${escapeHtml(result.status)} · score ${result.score}/100 · ${result.blockingReasons.length} blocker(s), ${result.warnings.length} warning(s)</small></div><span class="tag ${cls}">${escapeHtml(result.status)}</span></div><div class="row"><div><strong>Approval eligibility</strong><small>${result.approvalEligible?'All integrity checks pass.':'Approval is not currently permitted.'}</small></div><span class="tag ${result.approvalEligible?'ok':'bad'}">${result.approvalEligible?'ELIGIBLE':'BLOCKED'}</span></div>`;
+}
+function renderMemory(){
+  const summary=memorySummary(loadState());
+  const total=$('memoryTotal'), recurring=$('memoryRecurring');
+  if(total) total.textContent=String(summary.total); if(recurring) recurring.textContent=String(summary.recurring);
+  const panel=$('memoryList'); if(!panel) return;
+  const memory=extractInstitutionalMemory(loadState()).slice(0,6);
+  if(!memory.length){ panel.innerHTML='<div class="row"><div><strong>No reusable patterns yet</strong><small>Institutional Memory is derived from observed failures, repairs, contradictions and falsifiers.</small></div><span class="tag warn">EMPTY</span></div>'; return; }
+  panel.innerHTML=memory.map(item=>`<div class="row"><div><strong>${escapeHtml(formatType(item.type))}</strong><small>${escapeHtml(item.pattern)} · ${item.caseCount} case(s) · ${item.occurrences} occurrence(s)</small></div><span class="tag ${item.caseCount>1?'ok':'warn'}">${item.caseCount>1?'RECURRING':'NEW'}</span></div>`).join('');
+}
 function formatType(v){return String(v||'signal').replaceAll('_',' ');}
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function refresh(){ Object.assign(state,loadState()); render(); }
@@ -51,36 +69,18 @@ window.osintEnterprise = {
   createCase: input => { const r=addRecord('cases',createCase(input)); refresh(); return r; },
   createEvidence: input => { const r=addRecord('evidence',createEvidence(input)); refresh(); return r; },
   createDecision: input => { const r=addRecord('decisions',createDecision(input)); refresh(); return r; },
-  evaluateDecision: decisionOrId => {
-    const current=loadState();
-    const decision=typeof decisionOrId==='string' ? current.decisions?.find(d=>d.id===decisionOrId) : decisionOrId;
-    if(!decision) throw new Error('Decision not found.');
-    return evaluateDecision(decision,current);
-  },
+  evaluateDecision: decisionOrId => { const current=loadState(); const decision=typeof decisionOrId==='string' ? current.decisions?.find(d=>d.id===decisionOrId) : decisionOrId; if(!decision) throw new Error('Decision not found.'); return evaluateDecision(decision,current); },
+  institutionalMemory: () => extractInstitutionalMemory(loadState()),
+  queryInstitutionalMemory: query => queryInstitutionalMemory(loadState(),query),
+  memorySummary: () => memorySummary(loadState()),
   triage: () => { const findings=contradictionTriage(loadState()); findings.forEach(f=>addRecord('contradictions',f)); refresh(); return findings; },
   shadowInvestigation: () => buildShadowInvestigation(loadState()),
   exportCase: () => downloadText('osint-enterprise-export.json',JSON.stringify(loadState(),null,2),'application/json')
 };
 
-seed();
-render();
+seed(); render();
 
-$('create')?.addEventListener('click',()=>{
-  const title=$('caseName')?.value.trim();
-  if(!title)return;
-  window.osintEnterprise.createCase({title, objective:'Investigation objective pending analyst definition.', priority:'medium'});
-  $('modal')?.classList.remove('open'); $('caseName').value='';
-});
-$('audit')?.addEventListener('click',()=>{
-  const findings=window.osintEnterprise.triage();
-  const shadow=window.osintEnterprise.shadowInvestigation();
-  renderChallenge();
-  alert(`${findings.length} contradiction candidate(s) generated. Shadow investigation found ${shadow.findingCount} reasoning-drift signal(s).`);
-});
-$('challenge')?.addEventListener('click',()=>{
-  const shadow=window.osintEnterprise.shadowInvestigation();
-  renderChallenge();
-  $('challengePanel')?.scrollIntoView({behavior:'smooth',block:'start'});
-  if(!shadow.findingCount && !shadow.falsificationGaps.length) alert('Shadow investigation clear: no current drift signal detected. This is not proof of correctness.');
-});
+$('create')?.addEventListener('click',()=>{ const title=$('caseName')?.value.trim(); if(!title)return; window.osintEnterprise.createCase({title, objective:'Investigation objective pending analyst definition.', priority:'medium'}); $('modal')?.classList.remove('open'); $('caseName').value=''; });
+$('audit')?.addEventListener('click',()=>{ const findings=window.osintEnterprise.triage(); const shadow=window.osintEnterprise.shadowInvestigation(); renderChallenge(); alert(`${findings.length} contradiction candidate(s) generated. Shadow investigation found ${shadow.findingCount} reasoning-drift signal(s).`); });
+$('challenge')?.addEventListener('click',()=>{ const shadow=window.osintEnterprise.shadowInvestigation(); renderChallenge(); $('challengePanel')?.scrollIntoView({behavior:'smooth',block:'start'}); if(!shadow.findingCount && !shadow.falsificationGaps.length) alert('Shadow investigation clear: no current drift signal detected. This is not proof of correctness.'); });
 $('export')?.addEventListener('click',()=>window.osintEnterprise.exportCase());
