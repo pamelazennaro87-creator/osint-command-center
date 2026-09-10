@@ -3,12 +3,19 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.PORT || 8080);
-const NODE_ENV = process.env.NODE_ENV || 'development';
 const MAX_BODY_BYTES = 1024 * 1024;
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 120;
 const MAX_RATE_BUCKETS = 10_000;
 const buckets = new Map();
+
+function nodeEnv() {
+  return process.env.NODE_ENV || 'development';
+}
+
+function isProduction() {
+  return nodeEnv() === 'production';
+}
 
 function requestId() {
   return crypto.randomUUID();
@@ -59,7 +66,7 @@ function send(res, status, body, requestIdValue) {
 }
 
 function requireProductionConfiguration() {
-  if (NODE_ENV !== 'production') return;
+  if (!isProduction()) return;
   const required = ['OIDC_ISSUER', 'OIDC_AUDIENCE', 'DATABASE_URL'];
   const missing = required.filter(name => !process.env[name]);
   if (missing.length) {
@@ -70,7 +77,7 @@ function requireProductionConfiguration() {
 function safeReadyResponse(_error, rid) {
   // Configuration details belong in private server logs, never in a public
   // readiness response. The client only needs to know that the service is not ready.
-  if (NODE_ENV !== 'production') {
+  if (!isProduction()) {
     return { status: 'not_ready', reason: 'production configuration incomplete', requestId: rid };
   }
   return { status: 'not_ready', requestId: rid };
@@ -139,4 +146,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   });
 }
 
-export { server, requireProductionConfiguration, rateLimited, rejectOversizedBody, safeReadyResponse };
+export {
+  server,
+  requireProductionConfiguration,
+  rateLimited,
+  rejectOversizedBody,
+  safeReadyResponse,
+  isProduction
+};
