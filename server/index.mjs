@@ -1,5 +1,6 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.PORT || 8080);
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -25,7 +26,7 @@ function securityHeaders(res) {
 }
 
 function clientKey(req) {
-  // Do not trust forwarded headers as an identity signal. A reverse proxy may
+  // Never treat forwarded headers as identity. A trusted reverse proxy may
   // normalize the socket address before this service receives the request.
   return req.socket.remoteAddress || 'unknown';
 }
@@ -66,7 +67,7 @@ function requireProductionConfiguration() {
   }
 }
 
-function safeReadyResponse(error, rid) {
+function safeReadyResponse(_error, rid) {
   // Configuration details belong in private server logs, never in a public
   // readiness response. The client only needs to know that the service is not ready.
   if (NODE_ENV !== 'production') {
@@ -132,8 +133,10 @@ server.on('clientError', (error, socket) => {
   socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
 });
 
-server.listen(PORT, () => {
-  console.log(`OSINT Command Center API listening on ${PORT}`);
-});
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  server.listen(PORT, () => {
+    console.log(`OSINT Command Center API listening on ${PORT}`);
+  });
+}
 
 export { server, requireProductionConfiguration, rateLimited, rejectOversizedBody, safeReadyResponse };
