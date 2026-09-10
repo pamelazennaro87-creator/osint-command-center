@@ -1,5 +1,5 @@
-const INSTALLATION_KEY = 'osint-installation-id-v1';
-const STATE_PREFIX = 'osint-enterprise-state-v1:';
+const INSTALLATION_KEY = 'osint-installation-id-v2';
+const STATE_PREFIX = 'osint-enterprise-state-v2:';
 
 const randomId = () => globalThis.crypto?.randomUUID?.() || `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -17,8 +17,7 @@ export function getPrivateStateKey(storage = globalThis.localStorage) {
   return `${STATE_PREFIX}${getAnonymousInstallationId(storage)}`;
 }
 
-// Match field names, not arbitrary substrings (e.g. "priority" must not match "ip").
-const SECRET_KEYS = /^(?:token|secret|password|authorization|cookie|api[-_]?key|access[-_]?key)$/i;
+const SECRET_KEYS = /^(?:token|secret|password|authorization|cookie|api[-_]?key|access[-_]?key|private[-_]?key|client[-_]?secret)$/i;
 const IDENTITY_KEYS = /^(?:email|e[-_]?mail|phone|telephone|address|full[-_]?name|first[-_]?name|last[-_]?name|ip|ip[-_]?address|user[-_]?name)$/i;
 
 export function sanitizeForExport(value) {
