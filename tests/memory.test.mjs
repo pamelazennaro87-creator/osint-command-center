@@ -1,9 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCase, createHypothesis } from '../src/core/model.js';
+import { createCase, createHypothesis, createSource, createEvidence, createDecision } from '../src/core/model.js';
 import { extractInstitutionalMemory, queryInstitutionalMemory, memorySummary } from '../src/core/memory.js';
+import { transitionDecision } from '../src/core/decision.js';
 
 function state(){ return {cases:[],sources:[],evidence:[],entities:[],relationships:[],hypotheses:[],contradictions:[],decisions:[],audit:[]}; }
+
+function cleanDecisionState(){
+  const s=state();
+  s.cases.push(createCase({id:'case_1'}));
+  s.sources.push(createSource({id:'src_1',independenceGroup:'a'}),createSource({id:'src_2',independenceGroup:'b'}));
+  s.evidence.push(createEvidence({id:'ev_for',caseId:'case_1',sourceId:'src_1',claim:'Supports',confidence:.8}),createEvidence({id:'ev_against',caseId:'case_1',sourceId:'src_2',claim:'Opposes',confidence:.5}));
+  s.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',evidenceFor:['ev_for'],evidenceAgainst:['ev_against'],confidence:.75,falsifier:'Independent disproof',falsifierTested:true,falsifierResult:'not_triggered'}));
+  return s;
+}
 
 test('institutional memory derives drift findings when not persisted',()=>{
   const s=state();
@@ -43,4 +53,25 @@ test('empty and malformed state are safe',()=>{
   assert.deepEqual(extractInstitutionalMemory({}),[]);
   assert.deepEqual(queryInstitutionalMemory({hypotheses:null},'anything'),[]);
   assert.equal(memorySummary({}).total,0);
+});
+
+test('approval transition is blocked unless the integrity gate passes',()=>{
+  const s=state();
+  s.cases.push(createCase({id:'case_1'}));
+  s.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',falsifier:'Independent disproof'}));
+  const d=createDecision({id:'d1',caseId:'case_1',title:'Decision',statement:'Proceed',linkedHypothesisIds:['h1'],rationale:'Rationale',riskAcceptance:'Accepted'});
+  assert.throws(()=>transitionDecision(d,'approved',s),/approval blocked by integrity gate/);
+});
+
+test('approval transition succeeds for a clean decision',()=>{
+  const s=cleanDecisionState();
+  const d=createDecision({id:'d1',caseId:'case_1',title:'Decision',statement:'Proceed',linkedHypothesisIds:['h1'],rationale:'Evidence supports the decision after challenge.',riskAcceptance:'Residual risk accepted by owner.'});
+  const transitioned=transitionDecision(d,'approved',s);
+  assert.equal(transitioned.state,'approved');
+});
+
+test('invalid decision state is rejected',()=>{
+  const s=state();
+  const d=createDecision({id:'d1'});
+  assert.throws(()=>transitionDecision(d,'banana',s),/Invalid decision state/);
 });
