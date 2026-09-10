@@ -8,9 +8,9 @@ const unique = values => [...new Set(values.filter(Boolean))];
 export function classifyTarget(target = '') {
   const value = clean(target);
   if (/^https?:\/\//i.test(value)) return 'url';
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(value)) return 'ip';
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'email';
   if (/^@?[A-Za-z0-9._-]{3,32}$/.test(value)) return 'username';
-  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(value)) return 'ip';
   return 'subject';
 }
 
