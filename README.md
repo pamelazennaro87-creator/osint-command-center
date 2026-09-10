@@ -1,83 +1,79 @@
 # OSINT Command Center
 
-## Enterprise Intelligence Operating System
+**An evidence-first OSINT investigation workspace built around a deliberate second opinion.**
 
-OSINT Command Center is an evidence-first intelligence operating system for structured investigations. It connects evidence, provenance, entities, relationships, hypotheses, contradictions, uncertainty, counter-narratives and decision support.
+OSINT Command Center is a browser-local intelligence workbench for organizing investigations without allowing the interface to silently turn assumptions into facts.
 
-> **Find the signal. Trace the evidence. Challenge the conclusion.**
+## What makes it different
 
-### Implemented foundation
+The core workflow is not just collection. It is:
 
-The GitHub Pages application provides a functional browser-local intelligence foundation:
+**Evidence → provenance → contradiction → shadow investigation → temporal check → decision gate → institutional memory.**
 
-- Case creation and persistence with `localStorage`
-- Structured evidence, source, entity, relationship, hypothesis and contradiction models
-- Bounded confidence values and analytical status states
-- Source reliability and independence metadata
-- Deterministic contradiction triage
-- Temporal Integrity Engine for historical identity/state changes
-- Counter-narrative / falsifier fields for hypotheses
-- AI-assisted evidence attribution with human-review guardrails
-- Audit-event model for traceability
-- State validation for broken references and duplicate IDs
-- Live Command Center metrics derived from stored state
-- GitHub Actions quality gate
-- GitHub Pages deployment pipeline
+The **Analyst Challenge Layer** deliberately looks for reasoning drift, source dependency, unsupported confidence and falsification gaps. The **Institutional Memory** layer extracts reusable patterns and turns them into pre-investigation checks for the next case.
 
-### Temporal integrity
+This is designed as an analyst tool, not an automated truth machine.
 
-The Temporal Integrity Engine groups observations by stable identifiers and compares historical field values across dated evidence. It can surface changes in names, flags, ownership, management, status or other analyst-defined temporal fields without treating a later state as a logical contradiction of an earlier snapshot.
+## Use it
 
-**Core rule: `STATE_CHANGE ≠ CONTRADICTION`.** A historical discrepancy becomes analytically meaningful only when the evidence supports that interpretation; the engine therefore preserves the timeline and leaves the conclusion to the analyst.
+1. Open the GitHub Pages deployment.
+2. Create a case and define its objective.
+3. Add evidence and source locators.
+4. Add entities and relationships when a connection needs to be tested.
+5. Create competing hypotheses and define falsifiers.
+6. Run contradiction triage and the shadow investigation.
+7. Review temporal findings and the Decision Integrity Gate.
+8. Export a privacy-sanitized case package or generate the professional report.
 
-Stable identifiers may be supplied explicitly or extracted from supported embedded identifiers such as IMO, MMSI, LEI and ICAO. The model is not tied to the BERILL case or to a single identifier type.
+The current browser client stores the workspace locally in the browser. No login is required for the local prototype.
 
-### Analytical rule
+## Privacy boundary
 
-The system distinguishes:
+The project is intentionally **local-first**. It does not claim magical or absolute anonymity: browser local storage is not an encrypted vault and a compromised device can expose local data.
 
-- **FACT** — directly supported by traceable evidence
-- **INFERENCE** — interpretation derived from evidence
-- **ASSUMPTION** — working premise, not established
-- **UNKNOWN** — insufficient evidence
-- **CONTESTED** — credible evidence conflicts with the claim
+Privacy controls currently:
 
-**A plausible conclusion is never automatically an established fact.**
+- anonymous per-installation local storage namespace;
+- export sanitization for common secret and direct-identity field names;
+- export blocking when secret-bearing fields are detected;
+- restrictive server security headers;
+- no camera, microphone or geolocation permissions requested by the server;
+- the server fails closed for intelligence routes until authentication, authorization and server-side persistence are configured.
 
-### Architecture
+**Operational rule:** do not place passwords, API keys, tokens, authentication cookies or unnecessary personal identifiers into case data.
 
-`Case → Evidence → Source → Entity → Relationship → Hypothesis → Contradiction → Confidence → Decision → Report`
+## Architecture
 
-The temporal layer operates across the Evidence portion of this chain:
+- `index.html` — deployable browser interface.
+- `src/app.js` — application orchestration and UI actions.
+- `src/core/model.js` — domain records.
+- `src/core/store.js` — browser-local persistence and audit events.
+- `src/core/engine.js` — metrics and contradiction triage.
+- `src/core/drift.js` — adversarial/shadow investigation.
+- `src/core/decision.js` — decision integrity gate and transitions.
+- `src/core/memory.js` — institutional memory and reusable patterns.
+- `src/core/temporal.js` — timeline and temporal anomaly analysis.
+- `src/core/privacy.js` — privacy audit and export sanitization.
+- `src/core/report.js` — professional report generation.
+- `src/core/validation.js` — state integrity validation.
+- `server/index.mjs` — deliberately minimal fail-closed backend boundary.
 
-`Evidence → Stable Identifier → Historical Field State → Timeline → Temporal Signal → Analyst Assessment`
+## Quality gate
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the domain specification and production boundary.
+Every main-branch change is intended to pass JavaScript syntax checks, behavioral tests and required-file checks before the Pages deployment workflow publishes the validated revision.
 
-### Production boundary
+The deployment workflow is chained to the successful Quality Gate, preventing a failed validation run from being published through the normal path.
 
-The current deployment is intentionally client-side and uses browser-local storage. It is a functional foundation, not a claim of production security. A production deployment must move sensitive data behind an authenticated server/API and add authorization, encrypted storage, immutable audit logging, secure secret management, backups, and controlled source acquisition.
+## Security model
 
-No API keys, credentials or secrets belong in the static site.
+Read `SECURITY.md` before using the project with sensitive investigations. Read `ARCHITECTURE.md` and `ENTERPRISE_READINESS.md` before treating the prototype as an enterprise system.
 
-### Repository structure
+The project does **not** pretend that a static GitHub Pages client is an enterprise-secure backend. Production use requires authenticated identity, server-side authorization, durable storage, key management, audit controls and an explicit threat model.
 
-```text
-.
-├── index.html
-├── ARCHITECTURE.md
-├── src/
-│   ├── app.js
-│   └── core/
-│       ├── model.js
-│       ├── store.js
-│       ├── engine.js
-│       ├── temporal.js
-│       └── validation.js
-├── tests/
-│   ├── drift.test.mjs
-│   └── temporal.test.mjs
-└── .github/workflows/
-    ├── pages.yml
-    └── quality.yml
-```
+## Status
+
+**Operational browser prototype.** The local investigation workflow, analytical guardrails, privacy checks, reporting and GitHub Pages deployment are implemented. Enterprise backend capabilities remain intentionally fail-closed until their security prerequisites exist.
+
+## License
+
+See the repository for the applicable project terms.
