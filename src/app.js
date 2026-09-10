@@ -1,7 +1,8 @@
-import { createCase, createEvidence, createSource, createEntity, createHypothesis } from './core/model.js';
+import { createCase, createEvidence, createSource, createEntity, createHypothesis, createDecision } from './core/model.js';
 import { loadState, saveState, addRecord } from './core/store.js';
 import { calculateMetrics, contradictionTriage } from './core/engine.js';
 import { buildShadowInvestigation } from './core/drift.js';
+import { evaluateDecision } from './core/decision.js';
 import { validateState } from './core/validation.js';
 
 const $ = id => document.getElementById(id);
@@ -49,6 +50,13 @@ window.osintEnterprise = {
   validate: () => validateState(loadState()),
   createCase: input => { const r=addRecord('cases',createCase(input)); refresh(); return r; },
   createEvidence: input => { const r=addRecord('evidence',createEvidence(input)); refresh(); return r; },
+  createDecision: input => { const r=addRecord('decisions',createDecision(input)); refresh(); return r; },
+  evaluateDecision: decisionOrId => {
+    const current=loadState();
+    const decision=typeof decisionOrId==='string' ? current.decisions?.find(d=>d.id===decisionOrId) : decisionOrId;
+    if(!decision) throw new Error('Decision not found.');
+    return evaluateDecision(decision,current);
+  },
   triage: () => { const findings=contradictionTriage(loadState()); findings.forEach(f=>addRecord('contradictions',f)); refresh(); return findings; },
   shadowInvestigation: () => buildShadowInvestigation(loadState()),
   exportCase: () => downloadText('osint-enterprise-export.json',JSON.stringify(loadState(),null,2),'application/json')
