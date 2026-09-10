@@ -20,10 +20,21 @@ export function validateHypothesis(hypothesis, state = {}) {
   return errors;
 }
 
+export function validateDecision(decision, state = {}) {
+  const errors = [];
+  if (!decision?.caseId || !state.cases?.some(c => c.id === decision.caseId)) errors.push('Decision must reference an existing case.');
+  if (!decision?.title?.trim()) errors.push('Decision title is required.');
+  if (!decision?.statement?.trim()) errors.push('Decision statement is required.');
+  if (decision.linkedHypothesisIds?.some(id => !state.hypotheses?.some(h => h.id === id))) errors.push('Decision contains an unknown hypothesis ID.');
+  if (decision.state === 'approved' && !decision.rationale?.trim()) errors.push('Approved decisions require a rationale.');
+  if (decision.state === 'approved' && !decision.riskAcceptance?.trim()) errors.push('Approved decisions require explicit risk acceptance.');
+  return errors;
+}
+
 export function validateState(state) {
   const errors = [];
   const ids = new Set();
-  for (const collection of ['cases','sources','evidence','entities','relationships','hypotheses','contradictions','audit']) {
+  for (const collection of ['cases','sources','evidence','entities','relationships','hypotheses','contradictions','decisions','audit']) {
     for (const record of state?.[collection] || []) {
       if (!record.id) errors.push(`${collection}: record without ID.`);
       else if (ids.has(record.id)) errors.push(`Duplicate ID: ${record.id}`);
@@ -32,5 +43,6 @@ export function validateState(state) {
   }
   for (const evidence of state?.evidence || []) errors.push(...validateEvidence(evidence,state));
   for (const hypothesis of state?.hypotheses || []) errors.push(...validateHypothesis(hypothesis,state));
+  for (const decision of state?.decisions || []) errors.push(...validateDecision(decision,state));
   return [...new Set(errors)];
 }
