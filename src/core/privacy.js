@@ -4,10 +4,11 @@ const STATE_PREFIX = 'osint-enterprise-state-v1:';
 const randomId = () => globalThis.crypto?.randomUUID?.() || `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export function getAnonymousInstallationId(storage = globalThis.localStorage) {
-  let id = storage?.getItem(INSTALLATION_KEY);
+  if (!storage) throw new Error('Local storage is unavailable.');
+  let id = storage.getItem(INSTALLATION_KEY);
   if (!id) {
     id = randomId();
-    storage?.setItem(INSTALLATION_KEY, id);
+    storage.setItem(INSTALLATION_KEY, id);
   }
   return id;
 }
@@ -16,8 +17,9 @@ export function getPrivateStateKey(storage = globalThis.localStorage) {
   return `${STATE_PREFIX}${getAnonymousInstallationId(storage)}`;
 }
 
-const SECRET_KEYS = /token|secret|password|authorization|cookie|api[-_]?key|access[-_]?key/i;
-const IDENTITY_KEYS = /email|e[-_]?mail|phone|telephone|address|full[-_]?name|first[-_]?name|last[-_]?name|ip|user[-_]?name/i;
+// Match field names, not arbitrary substrings (e.g. "priority" must not match "ip").
+const SECRET_KEYS = /^(?:token|secret|password|authorization|cookie|api[-_]?key|access[-_]?key)$/i;
+const IDENTITY_KEYS = /^(?:email|e[-_]?mail|phone|telephone|address|full[-_]?name|first[-_]?name|last[-_]?name|ip|ip[-_]?address|user[-_]?name)$/i;
 
 export function sanitizeForExport(value) {
   if (Array.isArray(value)) return value.map(sanitizeForExport);
