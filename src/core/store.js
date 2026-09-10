@@ -4,7 +4,7 @@ const KEY = 'osint-enterprise-state-v1';
 
 const emptyState = () => ({
   cases: [], sources: [], evidence: [], entities: [], relationships: [],
-  hypotheses: [], contradictions: [], audit: []
+  hypotheses: [], contradictions: [], decisions: [], audit: []
 });
 
 export function loadState() {
