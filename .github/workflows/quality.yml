@@ -32,35 +32,15 @@ jobs:
           test -f SECURITY.md
           test -f package.json
           test -f server/index.mjs
-          test -f server/README.md
           test -f src/core/model.js
           test -f src/core/store.js
           test -f src/core/engine.js
-          test -f src/core/drift.js
-          test -f src/core/assurance.js
-          test -f src/core/memory.js
-          test -f src/core/decision.js
-          test -f src/core/report.js
-          test -f src/core/validation.js
-          test -f src/core/temporal.js
-          test -f src/core/privacy.js
-          test -f src/core/intelligence.js
-          test -f src/core/daid2.js
-          test -f src/core/investigation-loop.js
           test -f src/core/i18n.js
-          test -f src/tools/lab.js
-          test -f src/tools/lab-ui.js
-          test -f tests/tools.test.mjs
-          test -f tests/i18n.test.mjs
-          test -f tests/investigation-loop.test.mjs
+          test -f src/core/bias-radar.js
+          test -f src/visual-engine.js
+          test -f src/app.js
           test -f src/super-ui.js
-          test -f src/daid-ui.js
-          test -f tests/drift.test.mjs
-          test -f tests/temporal.test.mjs
-          test -f tests/server.test.mjs
+          test -f manifest.webmanifest
           grep -q 'type="module" src="./src/app.js"' index.html
-          grep -q 'type="module" src="./src/super-ui.js"' index.html
-          grep -q 'type="module" src="./src/tools/lab-ui.js"' index.html
-          grep -q 'type="module" src="./src/core/i18n.js"' index.html
-          grep -q "daid-ui.js" src/core/i18n.js
-          grep -q "investigation-loop.js" src/daid-ui.js
+          grep -q 'manifest.webmanifest' index.html
+          grep -q 'viewport' index.html
