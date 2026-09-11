@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const ROOT = new URL('../', import.meta.url).pathname;
-const PORT = 4173;
+const PORT = 4173 + (process.pid % 1000);
+const CDP_PORT = 9223 + (process.pid % 1000);
 let server;
 let browser;
 let profile;
@@ -60,9 +61,9 @@ async function boot() {
     try { return (await fetch(`http://127.0.0.1:${PORT}/index.html`)).ok; } catch { return false; }
   });
 
-  browser = spawn('chromium', ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--remote-debugging-port=9222', `--user-data-dir=${profile}`, `http://127.0.0.1:${PORT}/index.html`], { stdio: 'ignore' });
+  browser = spawn('chromium', ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', `--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${profile}`, `http://127.0.0.1:${PORT}/index.html`], { stdio: 'ignore' });
   const target = await waitFor(async () => {
-    const pages = await browserFetch('http://127.0.0.1:9222/json/list');
+    const pages = await browserFetch(`http://127.0.0.1:${CDP_PORT}/json/list`);
     return pages.find(p => p.type === 'page' && p.url.includes('/index.html'));
   });
 
