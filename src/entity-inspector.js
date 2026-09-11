@@ -80,7 +80,7 @@ if (!window.__occEntityInspector) {
   document.head.appendChild(style);
 
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c =>
-    ({ '&':'&', '<':'<', '>':'>', '"':'"', "'":'&#39;' }[c]));
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 
   const panel = document.createElement('aside');
   panel.className = 'occ-inspector';
@@ -192,7 +192,6 @@ if (!window.__occEntityInspector) {
     }
   });
 
-  // Single delegated handler — only .living-node (created by visual-engine)
   document.addEventListener('click', e => {
     const node = e.target.closest?.('.living-node[data-entity-id]');
     if (!node) return;
