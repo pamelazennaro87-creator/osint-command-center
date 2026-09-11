@@ -7,11 +7,10 @@ globalThis.localStorage = {
   setItem: (key, value) => storage.set(key, String(value)),
   removeItem: key => storage.delete(key)
 };
-globalThis.crypto = { randomUUID: () => 'test-installation' };
 
 const { loadState, saveState, getRecoveryHistory } = await import('../src/core/store.js');
 
- test('legacy global state is never auto-imported into a private installation', () => {
+test('legacy global state is never auto-imported into a private installation', () => {
   storage.clear();
   storage.set('osint-enterprise-state-v1', JSON.stringify({ cases: [{ id: 'legacy-case' }] }));
   const state = loadState();
