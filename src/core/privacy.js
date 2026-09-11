@@ -19,8 +19,8 @@ export function getPrivateStateKey(storage = globalThis.localStorage) {
   return `${STATE_PREFIX}${getAnonymousInstallationId(storage)}`;
 }
 
-const SECRET_KEYS = /^(?:token|secret|password|passwd|pwd|authorization|cookie|api[-_]?key|access[-_]?key|private[-_]?key|client[-_]?secret|credential|credentials)$/i;
-const IDENTITY_KEYS = /^(?:email|e[-_]?mail|phone|telephone|address|full[-_]?name|first[-_]?name|last[-_]?name|ip|ip[-_]?address|user[-_]?name|username)$/i;
+const SECRET_KEYS = /^(?:token|secret|password|passwd|pwd|authorization|cookie|api[-_]?key|access[-_]?key|private[-_]?key|client[-_]?secret|credential|credentials|(?:api|auth|access|client|github|gitlab)[-_]?(?:token|secret|key|credential))$/i;
+const IDENTITY_KEYS = /^(?:email|e[-_]?mail|phone|telephone|address|full[-_]?name|first[-_]?name|last[-_]?name|ip|ip[-_]?address|user[-_]?name|username|(?:contact|owner|billing|shipping|account|profile)[-_]?(?:email|phone|telephone|address|name))$/i;
 const INSTALLATION_KEYS = /^(?:installation[-_]?id|anonymous[-_]?installation[-_]?id)$/i;
 
 const SECRET_PATTERNS = [
