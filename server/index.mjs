@@ -30,6 +30,7 @@ function securityHeaders(res) {
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  if (isProduction()) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 }
 
 function clientKey(req) {
@@ -89,6 +90,22 @@ function rejectOversizedBody(req, res, rid) {
     send(res, 413, { error: 'payload_too_large', requestId: rid }, rid);
     req.resume();
     return true;
+  }
+
+  // No body-bearing intelligence route exists yet. Still bound chunked uploads
+  // so an unauthenticated caller cannot bypass the byte limit by omitting
+  // Content-Length. Future body-consuming routes must replace this guard with
+  // an equivalent streaming parser that enforces the same ceiling.
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !req.readableEnded) {
+    let received = 0;
+    req.on('data', chunk => {
+      received += chunk.length;
+      if (received > MAX_BODY_BYTES) {
+        send(res, 413, { error: 'payload_too_large', requestId: rid }, rid);
+        req.destroy();
+      }
+    });
+    req.resume();
   }
   return false;
 }
