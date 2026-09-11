@@ -1,0 +1,28 @@
+/* Strategic UI layer: visual hierarchy over decoration. No external assets. */
+:root{
+  --ui-bg:#05090c;--ui-surface:#0a1217;--ui-surface-2:#0d181e;--ui-border:#183039;
+  --ui-accent:#69d7d0;--ui-text:#e7f0ef;--ui-muted:#789095;--ui-focus:#9af0e8;
+  --ui-radius:12px;--ui-shadow:0 14px 40px rgba(0,0,0,.22);
+}
+body{background:linear-gradient(180deg,#05090c 0%,#071014 52%,#05090c 100%);color:var(--ui-text);letter-spacing:.002em}
+body:before{content:'';position:fixed;inset:0;pointer-events:none;z-index:10;background:linear-gradient(transparent 97%,rgba(105,215,208,.018) 100%);background-size:100% 4px;opacity:.18}
+.side{width:238px;padding:18px 12px;background:rgba(4,9,12,.94);border-right:1px solid #13272e;backdrop-filter:blur(18px)}
+.shell{grid-template-columns:238px minmax(0,1fr)}
+.brand{font-size:12px;line-height:1.25;padding:4px 8px}.brand span{font-size:8px;margin-top:6px;color:#67cfc9}
+.nav{gap:3px;margin-top:20px}.nav button{min-height:40px;padding:9px 12px;border-radius:9px;font-size:12px}.nav button.active{background:#0b1b21;border-color:#18383f;box-shadow:inset 2px 0 #69d7d0,0 4px 18px rgba(0,0,0,.12)}
+.note{left:12px;right:12px;bottom:14px;font-size:9px;line-height:1.5}
+.main{max-width:1540px;padding:22px 30px 40px}.top{align-items:center}.ey{font-size:8px;letter-spacing:.18em;color:#69d7d0}.title{font-size:27px;letter-spacing:-.035em;margin:3px 0 4px}.sub{max-width:760px;font-size:12px;line-height:1.55;margin:0}
+.status{font-size:9px;padding:7px 10px;background:#081216;border-color:#183038}.dot{width:6px;height:6px}
+.super-toolbar{margin:16px 0 0}.command-search{height:39px;max-width:620px;background:#071116;border-color:#173038;border-radius:9px;font-size:12px;padding:9px 12px}.command-search::placeholder{color:#5e7378}
+.grid{gap:11px;margin-top:16px}.card,.signal-cell,.tool-card{border-radius:var(--ui-radius);background:linear-gradient(145deg,rgba(13,26,32,.98),rgba(7,15,19,.98));box-shadow:none;border-color:var(--ui-border)}.card{padding:14px}.card h2{font-size:12px;margin-bottom:9px}.metric{min-height:106px}.num{font-size:26px}.label{font-size:8px}.row{padding:8px 0}.row strong{font-size:11px}.row small{font-size:10px}
+.actions button,.button{min-height:34px;padding:7px 10px;border-radius:8px;font-size:11px}.actions .primary,.button.primary{box-shadow:0 5px 16px rgba(105,215,208,.08)}
+.signal-board{gap:8px}.signal-cell{min-height:100px;padding:12px}.signal-cell strong{font-size:12px}.signal-cell small{font-size:9px}.next-action{padding:10px 0}
+.focus-strip{padding:9px 12px;margin-bottom:10px}.focus-strip strong{font-size:11px}
+.graph-canvas svg.living-svg{min-height:300px}.graph-shell{margin-bottom:12px}.graph-head{margin-bottom:8px}.graph-legend{font-size:9px}
+.tool-grid{gap:10px;margin-top:14px}.tool-card{padding:12px}.tool-card h3{font-size:10px}.tool-card textarea,.tool-card input{font-size:11px;padding:8px;margin:6px 0}.tool-result{font-size:10px;max-height:210px}
+/* Reading rhythm: reduce simultaneous visual noise. */
+.view>.grid>.card:not(.wide),.view>.grid>.metric{transition:transform .18s ease,border-color .18s ease}.view>.grid>.card:not(.wide):hover{transform:translateY(-1px);border-color:#24454d}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px}
+@media (max-width:1050px){.shell{grid-template-columns:74px minmax(0,1fr)}.side{width:74px;padding:16px 8px}.brand{font-size:0;text-align:center}.brand:before{content:'◈';font-size:20px;color:var(--ui-accent)}.brand span,.note{display:none}.nav button{font-size:0;text-align:center;padding:10px 5px}.nav button::first-letter{font-size:17px}.main{padding:18px 18px 32px}.signal-board{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:720px){.shell{display:block}.side{position:sticky;top:0;width:100%;height:auto;padding:8px 9px;z-index:20;border-right:0;border-bottom:1px solid #13272e}.brand{display:none}.nav{display:flex;overflow-x:auto;margin:0;gap:5px;scrollbar-width:none}.nav button{flex:0 0 auto;font-size:0;min-width:42px;min-height:40px}.nav button::first-letter{font-size:16px}.main{padding:15px 12px 28px}.top{display:block}.status{display:inline-block;margin-top:10px}.title{font-size:23px}.super-toolbar{margin-top:13px}.command-search{max-width:none;width:100%}.signal-board{grid-template-columns:1fr 1fr}.challenge-grid,.report-grid{grid-template-columns:1fr}.tool-grid{grid-template-columns:1fr}.card{padding:12px}}
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
