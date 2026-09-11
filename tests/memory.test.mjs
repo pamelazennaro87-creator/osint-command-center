@@ -33,14 +33,20 @@ test('same falsifier pattern becomes reusable across cases',()=>{
   );
   const item=extractInstitutionalMemory(s).find(x=>x.type==='FALSIFIER_PATTERN' && x.pattern==='independent disproof');
   assert.equal(item.occurrences,2);
+  assert.deepEqual(item.caseIds,['case_1','case_2']);
+  assert.equal(item.caseCount,2);
 });
 
 test('memory query and summary are deterministic',()=>{
-  const s=cleanDecisionState();
-  const a=queryInstitutionalMemory(s,'independent disproof');
-  const b=queryInstitutionalMemory(s,'independent disproof');
+  const s=state();
+  s.cases.push(createCase({id:'case_1'}));
+  s.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',falsifier:'Independent disproof'}));
+  const a=extractInstitutionalMemory(s), b=extractInstitutionalMemory(s);
   assert.deepEqual(a,b);
-  assert.equal(memorySummary(s).total,memorySummary(s).total);
+  assert.ok(queryInstitutionalMemory(s,'falsifier').length>0);
+  const summary=memorySummary(s);
+  assert.equal(summary.total,a.length);
+  assert.equal(summary.byType.FALSIFIER_PATTERN>0,true);
 });
 
 test('empty and malformed state are safe',()=>{
