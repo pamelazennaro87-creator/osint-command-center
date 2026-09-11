@@ -15,6 +15,14 @@ function baseState(falsifierTest) {
   return { cases: [c], sources: [s1, s2], evidence: [support, opposition, testEvidence], hypotheses: [h], decisions: [d], contradictions: [], driftFindings: [], audit: [] };
 }
 
+function addAiSupport(state, verification) {
+  const source = state.sources[0];
+  const aiEvidence = createEvidence({ id: 'ev_ai', caseId: state.cases[0].id, sourceId: source.id, title: 'AI-assisted support', claim: 'ai-assisted support', status: 'FACT', confidence: 0.8, aiAssisted: true, humanVerified: true, aiVerification: verification });
+  state.evidence.push(aiEvidence);
+  state.hypotheses[0].evidenceFor.push(aiEvidence.id);
+  return state;
+}
+
 test('falsifier boolean alone cannot satisfy the approval gate', () => {
   const result = evaluateDecision(baseState(null).decisions[0], baseState(null));
   assert.equal(result.status, 'BLOCKED');
@@ -40,4 +48,23 @@ test('evidence-backed provenance cannot reference nonexistent evidence', () => {
   const state = baseState({ provenance: 'EVIDENCE_BACKED', method: 'source comparison', note: 'Compared records.', testedAt: new Date().toISOString(), evidenceIds: ['missing-evidence'] });
   const result = evaluateDecision(state.decisions[0], state);
   assert.equal(result.status, 'BLOCKED');
+});
+
+test('humanVerified boolean alone cannot satisfy AI verification guardrail', () => {
+  const state = addAiSupport(baseState({ provenance: 'EVIDENCE_BACKED', method: 'source comparison', note: 'Compared records.', testedAt: new Date().toISOString(), evidenceIds: ['ev_falsifier'] }), null);
+  const result = evaluateDecision(state.decisions[0], state);
+  assert.equal(result.status, 'BLOCKED');
+  assert.match(result.blockingReasons.join(' '), /AI-assisted evidence requires evidence-backed verification provenance/i);
+});
+
+test('evidence-backed AI verification provenance satisfies the guardrail', () => {
+  const state = addAiSupport(baseState({ provenance: 'EVIDENCE_BACKED', method: 'source comparison', note: 'Compared AI-assisted claim against an independent record.', testedAt: new Date().toISOString(), evidenceIds: ['ev_falsifier'] }), {
+    provenance: 'EVIDENCE_BACKED',
+    method: 'independent source comparison',
+    note: 'Compared the AI-assisted claim against an independent record.',
+    verifiedAt: new Date().toISOString(),
+    evidenceIds: ['ev_falsifier']
+  });
+  const result = evaluateDecision(state.decisions[0], state);
+  assert.equal(result.status, 'PASS');
 });
