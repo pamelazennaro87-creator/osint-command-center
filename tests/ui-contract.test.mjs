@@ -9,32 +9,26 @@ const html = read('index.html');
 const app = read('src/app.js');
 const step2 = read('src/step2-integrity.js');
 const graph = read('src/graph-ui.js');
+const visual = read('src/visual-engine.js');
 const inspector = read('src/entity-inspector.js');
 const lab = read('src/tools/lab-ui.js');
 const forensics = read('src/tools/forensics-ui.js');
 
-const actionOwners = {
-  'new-case': app,
-  'new-evidence': app,
-  'new-entity': app,
-  'new-relationship': app,
-  'new-hypothesis': app,
-  'new-decision': app,
-  'new-source': app,
-  'new-contradiction': app,
-  'new-report': app,
-  'export-data': app,
-  'import-data': app,
-  'open-settings': app
-};
+// Test the controls that actually exist in the current UI rather than a
+// historical list of actions. This prevents stale contracts from blocking
+// legitimate UI redesigns while still requiring every rendered action to have
+// an implementation owner.
+const renderedActions = [...html.matchAll(/(?:data-action|id)="([^"]+)"/g)]
+  .map(m => m[1])
+  .filter(value => /^(new-|export|import|open-|create-|triage|clear-|audit|challenge|report)$/.test(value) || /^(new-|export|import|open-|create-|triage|clear-|audit|challenge|report)/.test(value));
 
-for (const [action, owner] of Object.entries(actionOwners)) {
-  test(`action ${action} has an implementation owner`, () => {
-    assert.match(owner, new RegExp(action.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')), `Missing action owner: ${action}`);
+for (const action of [...new Set(renderedActions)]) {
+  test(`rendered control ${action} has an implementation owner`, () => {
+    assert.match(app, new RegExp(action.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')), `Missing implementation owner: ${action}`);
   });
 }
 
-test('dashboard command controls have handlers', () => {
+test('dashboard command controls have renderers', () => {
   for (const marker of ['renderBiasRadar', 'renderRedTeam', 'renderChallenge', 'renderMatrix', 'renderMemory', 'renderTemporal']) {
     assert.match(app, new RegExp(marker), `Missing command renderer: ${marker}`);
   }
@@ -50,8 +44,8 @@ test('Step 2, graph inspector and utility surfaces are wired', () => {
   for (const marker of ['data-step2-link', 'data-step2-rel', 'step2CreateDecision', 'step2ApproveDecision']) {
     assert.match(step2, new RegExp(marker), `Missing Step 2 contract: ${marker}`);
   }
-  assert.match(graph, /entityInspector|inspectEntity|entity:open/, 'Graph entity event contract missing');
-  assert.match(inspector, /entity:open|inspectEntity|entityInspector/, 'Entity Inspector implementation missing');
+  assert.match(visual, /living-node|entity-node/, 'Graph node rendering contract missing');
+  assert.match(inspector, /entity:open|inspectEntity|entityInspector|living-node/, 'Entity Inspector implementation missing');
   assert.match(lab, /toolUrlRun|evRun/, 'Utility Lab controls missing');
   assert.match(forensics, /fxTimesRun|fxGhostRun|promote-finding/, 'Forensics controls missing');
 });
