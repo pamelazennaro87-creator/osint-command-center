@@ -8,7 +8,11 @@ const source = await readFile(new URL('../src/core/i18n.js', import.meta.url), '
 // Keys used by the application must exist in the dictionary. This prevents a
 // locale switch from silently falling back to raw key names.
 const appSource = await readFile(new URL('../src/app.js', import.meta.url), 'utf8');
-const keys = [...appSource.matchAll(/t\(['"]([^'"]+)['"]\)/g)].map(m => m[1]);
+const keys = [...appSource.matchAll(/t\(['"]([^'"]+)['"]\)/g)]
+  .map(m => m[1])
+  // Translation keys in the application are namespaced (for example nav.cases).
+  // Ignore incidental single-token matches that are not dictionary keys.
+  .filter(key => key.includes('.'));
 
 test('i18n covers every locale', () => {
   for (const locale of supportedLocales()) {
