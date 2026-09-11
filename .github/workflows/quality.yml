@@ -17,6 +17,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Install Chromium for browser runtime verification
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium
       - name: Validate JavaScript syntax
         run: npm run check
       - name: Run behavioral tests
