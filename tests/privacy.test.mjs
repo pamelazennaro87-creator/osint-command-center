@@ -49,3 +49,24 @@ test('installation identifiers are not exported or treated as analytical identit
   assert.equal(out.installationId, undefined);
   assert.ok(privacyAudit({ cases: [input] }).some(x => x.severity === 'medium' && x.key === 'installationId'));
 });
+
+test('compound secret and identity field names are minimized', () => {
+  const input = {
+    apiKey: 'supersecret',
+    githubToken: 'ghp_compound_should_not_export',
+    contactEmail: 'person@example.com',
+    ownerName: 'Person Example',
+    usefulLabel: 'retain'
+  };
+  const out = sanitizeForExport(input);
+  assert.equal(out.apiKey, undefined);
+  assert.equal(out.githubToken, undefined);
+  assert.equal(out.contactEmail, undefined);
+  assert.equal(out.ownerName, undefined);
+  assert.equal(out.usefulLabel, 'retain');
+  const findings = privacyAudit({ cases: [input] });
+  assert.ok(findings.some(x => x.severity === 'high' && x.key === 'apiKey'));
+  assert.ok(findings.some(x => x.severity === 'high' && x.key === 'githubToken'));
+  assert.ok(findings.some(x => x.severity === 'medium' && x.key === 'contactEmail'));
+  assert.ok(findings.some(x => x.severity === 'medium' && x.key === 'ownerName'));
+});
