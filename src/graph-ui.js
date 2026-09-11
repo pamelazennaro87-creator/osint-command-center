@@ -1,60 +1,10 @@
-import { loadState } from './core/store.js';
+/**
+ * graph-ui.js — compatibility layer
+ * Entity inspection is handled exclusively by src/entity-inspector.js
+ * to avoid duplicate panels and competing click/keydown handlers.
+ * This file remains loaded for any future graph-specific UI helpers.
+ */
 
-const $ = id => document.getElementById(id);
-const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const pct = v => Math.round(Math.max(0, Math.min(1, Number(v) || 0)) * 100);
-
-function ensureInspector() {
-  if ($('entityInspector')) return $('entityInspector');
-  const p = document.createElement('aside');
-  p.id = 'entityInspector';
-  p.className = 'entity-inspector';
-  p.setAttribute('aria-live', 'polite');
-  p.innerHTML = '<button class="x" type="button" aria-label="Close entity inspector">×</button><div class="ey">ENTITY INSPECTOR</div><h3 id="inspectorName"></h3><div id="inspectorBody"></div>';
-  document.body.appendChild(p);
-  p.querySelector('.x').addEventListener('click', () => p.classList.remove('open'));
-  return p;
-}
-
-function inspectEntity(id) {
-  const state = loadState();
-  const entity = (state.entities || []).find(x => x.id === id);
-  if (!entity) return;
-  const inspector = ensureInspector();
-  const relationships = (state.relationships || []).filter(r => r.fromEntityId === id || r.toEntityId === id);
-  const relationshipEvidenceIds = new Set(relationships.flatMap(r => r.evidenceIds || []));
-  const directEvidence = (state.evidence || []).filter(e => relationshipEvidenceIds.has(e.id) || (e.entityIds || []).includes(id));
-  const sources = new Set(directEvidence.map(e => e.sourceId).filter(Boolean));
-  const relatedEntities = relationships.map(r => {
-    const otherId = r.fromEntityId === id ? r.toEntityId : r.fromEntityId;
-    return state.entities.find(e => e.id === otherId)?.name;
-  }).filter(Boolean);
-  $('inspectorName').textContent = entity.name || 'Unnamed entity';
-  $('inspectorBody').innerHTML = `<div class="ins-grid"><div><small>Type</small><strong>${esc(entity.type || 'unknown')}</strong></div><div><small>Relationships</small><strong>${relationships.length}</strong></div><div><small>Evidence</small><strong>${directEvidence.length}</strong></div><div><small>Sources</small><strong>${sources.size}</strong></div></div><div class="loop-action"><strong>LINKED ENTITIES</strong><small>${esc(relatedEntities.join(' · ') || 'None recorded')}</small></div><div class="loop-action"><strong>EVIDENCE FOOTPRINT</strong>${directEvidence.slice(0, 8).map(e => `<small>${esc(e.title || 'Evidence')} · ${esc(e.status || 'UNKNOWN')} · ${pct(e.confidence)}%</small>`).join('') || '<small>No evidence is linked to this node yet.</small>'}</div>`;
-  inspector.classList.add('open');
-}
-
-function bind() {
-  if (window.__occGraphInspectorBound) return;
-  window.__occGraphInspectorBound = true;
-  const activate = event => {
-    const node = event.target.closest?.('.entity-node[data-entity-id]');
-    if (!node) return;
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    inspectEntity(node.dataset.entityId);
-  };
-  document.addEventListener('click', activate, true);
-  document.addEventListener('keydown', event => {
-    const node = event.target.closest?.('.entity-node[data-entity-id]');
-    if ((event.key === 'Enter' || event.key === ' ') && node) {
-      event.preventDefault();
-      inspectEntity(node.dataset.entityId);
-    }
-  });
-}
-
-if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind, { once: true });
-  else bind();
-}
+// Intentionally empty of inspector logic.
+// visual-engine.js creates nodes with classes: entity-node living-node
+// entity-inspector.js listens for .living-node[data-entity-id]
