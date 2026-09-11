@@ -63,8 +63,8 @@ export function privacyAudit(state) {
     });
   };
   for (const [collection, records] of Object.entries(state || {})) {
-    if (!Array.isArray(records)) continue;
-    records.forEach((record, index) => scan(record, collection, index));
+    if (Array.isArray(records)) records.forEach((record, index) => scan(record, collection, index));
+    else scan(records, collection, null, collection);
   }
   return findings;
 }
