@@ -83,6 +83,7 @@ async function boot() {
     '--disable-features=Translate,MediaRouter',
     '--no-first-run',
     '--no-default-browser-check',
+    '--remote-allow-origins=*',
     '--remote-debugging-address=127.0.0.1',
     `--remote-debugging-port=${CDP_PORT}`,
     `--user-data-dir=${profile}`,
@@ -90,10 +91,20 @@ async function boot() {
   ], { stdio: ['ignore', 'ignore', 'pipe'] });
   browser.stderr.on('data', chunk => { browserStderr += chunk.toString(); });
 
+  await waitFor(async () => {
+    if (browser.exitCode !== null) throw new Error(`Browser exited with code ${browser.exitCode}.`);
+    try {
+      const version = await browserFetch(`http://127.0.0.1:${CDP_PORT}/json/version`);
+      return Boolean(version.webSocketDebuggerUrl);
+    } catch { return false; }
+  }, 30000);
+
   const target = await waitFor(async () => {
     if (browser.exitCode !== null) throw new Error(`Browser exited with code ${browser.exitCode}.`);
-    const pages = await browserFetch(`http://127.0.0.1:${CDP_PORT}/json/list`);
-    return pages.find(p => p.type === 'page');
+    try {
+      const pages = await browserFetch(`http://127.0.0.1:${CDP_PORT}/json/list`);
+      return pages.find(p => p.type === 'page');
+    } catch { return false; }
   }, 30000);
 
   ws = new WebSocket(target.webSocketDebuggerUrl);
