@@ -1,9 +1,8 @@
 name: Deploy OSINT Enterprise
 
 on:
-  workflow_run:
-    workflows: ["OSINT Enterprise Quality Gate"]
-    types: [completed]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,18 +16,21 @@ concurrency:
 
 jobs:
   deploy:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout validated revision
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          node-version: 24
+
+      - name: Validate application before deployment
+        run: npm run verify
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
