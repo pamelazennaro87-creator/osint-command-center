@@ -44,5 +44,7 @@ export function validateState(state) {
   for (const evidence of state?.evidence || []) errors.push(...validateEvidence(evidence,state));
   for (const hypothesis of state?.hypotheses || []) errors.push(...validateHypothesis(hypothesis,state));
   for (const decision of state?.decisions || []) errors.push(...validateDecision(decision,state));
-  return [...new Set(errors)];
+  const result = [...new Set(errors)];
+  Object.defineProperty(result, 'valid', { value: result.length === 0, enumerable: false });
+  return result;
 }
