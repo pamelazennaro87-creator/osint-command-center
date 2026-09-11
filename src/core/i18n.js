@@ -3,7 +3,7 @@
  * Default: English. Full coverage for EN + IT, structure for DE/FR/ES.
  */
 
-export const I18N_VERSION = '2.1';
+export const I18N_VERSION = '2.2';
 
 export const SUPPORTED_LOCALES = Object.freeze({
   en: { label: 'English', native: 'English', dir: 'ltr' },
@@ -43,7 +43,7 @@ const DICT = {
   'bias.links': { en: 'Unsupported relationships', it: 'Relazioni non supportate', de: 'Nicht belegte Beziehungen', fr: 'Relations non étayées', es: 'Relaciones sin soporte' },
   'bias.shadow': { en: 'Shadow investigation risk', it: 'Rischio shadow investigation', de: 'Shadow-Investigation-Risiko', fr: 'Risque d\'enquête parallèle', es: 'Riesgo de investigación sombra' },
   'redteam.title': { en: 'Red Team Pressure Board', it: 'Red Team Pressure Board', de: 'Red-Team-Druckbrett', fr: 'Tableau de pression Red Team', es: 'Tablero de presión Red Team' },
-  'redteam.off': { en: 'Red Team Mode is off. Activate it from the Bias Radar to force cognitive friction on gaps and unsupported claims.', it: 'Red Team Mode spento. Attivalo dal Bias Radar per forzare l\'attrito cognitivo.', de: 'Red Team Mode ist aus.', fr: 'Mode Red Team désactivé.', es: 'Modo Red Team desactivado.' },
+  'redteam.off': { en: 'Red Team Mode is off. Activate it from the Bias Radar to force cognitive friction on gaps and unsupported claims.', it: 'Red Team Mode spento. Attivalo dal Bias Radar.', de: 'Red Team Mode ist aus.', fr: 'Mode Red Team désactivé.', es: 'Modo Red Team desactivado.' },
   'redteam.principle': { en: 'Cognitive friction is intentional. Resolve or explicitly accept each item before deciding.', it: 'L\'attrito cognitivo è intenzionale. Risolvi o accetta esplicitamente ogni elemento prima di decidere.', de: 'Kognitive Reibung ist beabsichtigt.', fr: 'La friction cognitive est intentionnelle.', es: 'La fricción cognitiva es intencional.' },
   'metric.cases': { en: 'ACTIVE CASES', it: 'CASI ATTIVI', de: 'AKTIVE FÄLLE', fr: 'DOSSIERS ACTIFS', es: 'CASOS ACTIVOS' },
   'metric.evidence': { en: 'EVIDENCE ITEMS', it: 'ELEMENTI DI PROVA', de: 'BEWEISELEMENTE', fr: 'ÉLÉMENTS DE PREUVE', es: 'ELEMENTOS DE EVIDENCIA' },
@@ -114,6 +114,12 @@ const DICT = {
   'live.promote': { en: 'Review → Evidence', it: 'Rivedi → Prova', de: 'Prüfen → Beweis', fr: 'Réviser → Preuve', es: 'Revisar → Evidencia' }
 };
 
+/** Free-text legacy map for older labels */
+const FREE = {
+  Cases: { en: 'Cases', it: 'Casi', de: 'Fälle', fr: 'Dossiers', es: 'Casos' },
+  Evidence: { en: 'Evidence', it: 'Prove', de: 'Beweise', fr: 'Preuves', es: 'Evidencias' }
+};
+
 export function supportedLocales() { return Object.keys(SUPPORTED_LOCALES); }
 
 export function getLocale(storage = globalThis.localStorage) {
@@ -123,13 +129,25 @@ export function getLocale(storage = globalThis.localStorage) {
   } catch {}
   const browser = (typeof navigator !== 'undefined' ? (navigator.language || '') : '').toLowerCase().split('-')[0];
   if (SUPPORTED_LOCALES[browser]) return browser;
-  return 'en'; // product default: English
+  return 'en';
 }
 
 export function t(key, locale = getLocale()) {
   const entry = DICT[key];
   if (!entry) return key;
   return entry[locale] || entry.en || key;
+}
+
+/** Legacy free-text translator used by older tests/UI */
+export function translate(value, locale = getLocale()) {
+  const text = String(value ?? '');
+  if (locale === 'en') return text;
+  if (FREE[text]?.[locale]) return FREE[text][locale];
+  // Try reverse-lookup of known dictionary English values
+  for (const [key, entry] of Object.entries(DICT)) {
+    if (entry.en === text && entry[locale]) return entry[locale];
+  }
+  return text;
 }
 
 export function setLocale(locale, storage = globalThis.localStorage) {
@@ -151,16 +169,17 @@ export function installLanguageSelector() {
     if (select) select.value = getLocale();
     return;
   }
-  const host = document.querySelector('.status') || document.querySelector('.top');
+  const host = document.querySelector('.status') || document.querySelector('.top') || document.body;
   if (!host) return;
   wrap = document.createElement('div');
   wrap.id = 'languageControl';
-  wrap.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:4px 8px;border:1px solid #69d7d0;border-radius:999px;background:#071318;font:11px/1 system-ui,sans-serif;z-index:50';
+  wrap.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:6px 10px;border:1px solid #69d7d0;border-radius:999px;background:#071318;font:12px/1 system-ui,sans-serif;z-index:50;min-height:36px';
   const icon = document.createElement('span');
   icon.textContent = '🌐';
+  icon.style.fontSize = '16px';
   const select = document.createElement('select');
   select.id = 'localeSelect';
-  select.style.cssText = 'appearance:auto;background:#071318;color:#e9f4f4;border:0;outline:0;border-radius:5px;padding:3px 18px 3px 2px;font-size:11px;font-weight:700;min-width:92px;cursor:pointer';
+  select.style.cssText = 'appearance:auto;background:#071318;color:#e9f4f4;border:0;outline:0;border-radius:5px;padding:4px 20px 4px 2px;font-size:13px;font-weight:700;min-width:96px;min-height:32px;cursor:pointer';
   for (const code of supportedLocales()) {
     const o = document.createElement('option');
     o.value = code;
@@ -177,6 +196,7 @@ export function installLanguageSelector() {
 }
 
 export function bootI18n() {
+  if (typeof document === 'undefined') return;
   document.documentElement.lang = getLocale();
   installLanguageSelector();
   document.addEventListener('occ:locale', () => installLanguageSelector());
