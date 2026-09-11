@@ -26,7 +26,7 @@ async function waitFor(fn, timeout = 10000, interval = 100) {
     } catch {}
     await new Promise(r => setTimeout(r, interval));
   }
-  throw new Error('Timed out waiting for condition.');
+  throw new Error(`Timed out waiting for condition. Browser stderr: ${browserStderr.slice(-4000)}`);
 }
 
 async function cdp(method, params = {}) {
@@ -56,7 +56,7 @@ async function browserFetch(url) {
 }
 
 function findBrowser() {
-  for (const candidate of ['google-chrome', 'chromium', 'chromium-browser']) {
+  for (const candidate of ['google-chrome-stable', 'google-chrome', 'chromium', 'chromium-browser']) {
     try {
       return execFileSync('sh', ['-lc', `command -v ${candidate}`], { encoding: 'utf8' }).trim();
     } catch {}
@@ -72,12 +72,29 @@ async function boot() {
   });
 
   const browserBin = findBrowser();
-  browser = spawn(browserBin, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${profile}`, `http://127.0.0.1:${PORT}/index.html`], { stdio: ['ignore', 'ignore', 'pipe'] });
+  browser = spawn(browserBin, [
+    '--headless=new',
+    '--no-sandbox',
+    '--disable-gpu',
+    '--disable-dev-shm-usage',
+    '--disable-background-networking',
+    '--disable-component-update',
+    '--disable-default-apps',
+    '--disable-features=Translate,MediaRouter',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--remote-debugging-address=127.0.0.1',
+    `--remote-debugging-port=${CDP_PORT}`,
+    `--user-data-dir=${profile}`,
+    'about:blank'
+  ], { stdio: ['ignore', 'ignore', 'pipe'] });
   browser.stderr.on('data', chunk => { browserStderr += chunk.toString(); });
+
   const target = await waitFor(async () => {
+    if (browser.exitCode !== null) throw new Error(`Browser exited with code ${browser.exitCode}.`);
     const pages = await browserFetch(`http://127.0.0.1:${CDP_PORT}/json/list`);
-    return pages.find(p => p.type === 'page' && p.url.includes('/index.html'));
-  }, 15000);
+    return pages.find(p => p.type === 'page');
+  }, 30000);
 
   ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
@@ -97,12 +114,10 @@ async function boot() {
 
   await cdp('Runtime.enable');
   await cdp('Page.enable');
+  await cdp('Page.navigate', { url: `http://127.0.0.1:${PORT}/index.html` });
+  await waitFor(async () => (await evaluate(`document.readyState === 'complete' && !!window.osintEnterprise`)) === true, 30000);
   await evaluate(`localStorage.clear(); sessionStorage.clear(); location.reload()`);
-  try {
-    await waitFor(async () => (await evaluate(`document.readyState === 'complete' && !!window.osintEnterprise`)) === true);
-  } catch (error) {
-    throw new Error(`${error.message} Browser stderr: ${browserStderr.slice(-4000)}`);
-  }
+  await waitFor(async () => (await evaluate(`document.readyState === 'complete' && !!window.osintEnterprise`)) === true, 30000);
   await new Promise(r => setTimeout(r, 300));
 }
 
@@ -134,7 +149,17 @@ async function shutdown() {
   try { ws?.close(); } catch {}
   try { browser?.kill('SIGTERM'); } catch {}
   try { server?.kill('SIGTERM'); } catch {}
-  if (profile) await rm(profile, { recursive: true, force: true });
+  if (browser) await new Promise(resolve => {
+    if (browser.exitCode !== null) return resolve();
+    browser.once('exit', resolve);
+    setTimeout(resolve, 3000);
+  });
+  if (server) await new Promise(resolve => {
+    if (server.exitCode !== null) return resolve();
+    server.once('exit', resolve);
+    setTimeout(resolve, 1000);
+  });
+  if (profile) await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
 test.before(async () => boot());
