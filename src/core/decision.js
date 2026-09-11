@@ -5,6 +5,7 @@ export const GATE_STATUS = Object.freeze(['PASS', 'REVIEW', 'BLOCKED']);
 const findingTypes = new Set(['AI_GUARDRAIL', 'SOURCE_DEPENDENCY', 'CONFIDENCE_DRIFT', 'CLAIM_CONFLICT', 'OPPOSITION_GAP']);
 const VALID_FALSIFIER_RESULTS = new Set(['supported', 'failed', 'inconclusive', 'not_triggered', 'triggered', 'disproved']);
 const VALID_DECISION_STATES = new Set(['draft', 'review', 'approved', 'rejected', 'superseded']);
+const VALID_FALSIFIER_PROVENANCE = new Set(['ANALYST_DECLARED', 'EVIDENCE_BACKED']);
 
 function check(id, label, status, message) { return { id, label, status, message }; }
 
@@ -37,8 +38,18 @@ export function evaluateDecision(decision, state = {}) {
   if (!falsifierDefined) blockingReasons.push('A linked hypothesis has no falsifier/counter-narrative condition.');
 
   const falsifierTested = linked.length > 0 && linked.every(h => h.falsifierTested === true && VALID_FALSIFIER_RESULTS.has(String(h.falsifierResult || '').toLowerCase()));
-  checks.push(check('FALSIFIER_TESTED', 'Falsifier tested', falsifierTested ? 'PASS' : 'BLOCKED', falsifierTested ? 'Falsifier testing is recorded for every linked hypothesis.' : 'Falsifier testing is missing or incomplete.'));
-  if (!falsifierTested) blockingReasons.push('Falsifier testing is missing or incomplete.');
+  const provenanceValid = linked.length > 0 && linked.every(h => {
+    const test = h.falsifierTest || {};
+    const methodValid = String(test.method || '').trim().length >= 3;
+    const noteValid = String(test.note || '').trim().length >= 3;
+    const testedAtValid = Boolean(test.testedAt);
+    const evidenceIds = Array.isArray(test.evidenceIds) ? test.evidenceIds : [];
+    const linkedTestEvidence = evidenceIds.filter(id => evidence.some(e => e.id === id));
+    return VALID_FALSIFIER_PROVENANCE.has(test.provenance) && methodValid && noteValid && testedAtValid && test.provenance === 'EVIDENCE_BACKED' && linkedTestEvidence.length > 0;
+  });
+  const falsifierIntegrity = falsifierTested && provenanceValid;
+  checks.push(check('FALSIFIER_TESTED', 'Falsifier tested', falsifierIntegrity ? 'PASS' : 'BLOCKED', falsifierIntegrity ? 'Falsifier testing is recorded with evidence-backed provenance for every linked hypothesis.' : 'Falsifier testing must include method, note, timestamp and at least one linked evidence item; analyst declaration alone is insufficient for approval.'));
+  if (!falsifierIntegrity) blockingReasons.push('Falsifier testing lacks evidence-backed provenance.');
 
   const oppositionConsidered = linked.length > 0 && linked.every(h => (h.evidenceAgainst || []).length > 0);
   checks.push(check('OPPOSING_EVIDENCE', 'Opposing evidence considered', oppositionConsidered ? 'PASS' : 'REVIEW', oppositionConsidered ? 'Every linked hypothesis has opposing evidence recorded.' : 'One or more linked hypotheses have no opposing evidence recorded.'));
