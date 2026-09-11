@@ -3,6 +3,8 @@ import { getAnonymousInstallationId, getPrivateStateKey } from './privacy.js';
 
 const HISTORY_PREFIX = 'osint-enterprise-history-v2:';
 const HISTORY_LIMIT = 10;
+const LEGACY_STATE_KEY = 'osint-enterprise-state-v1';
+const INSTALLATION_KEY = 'osint-installation-id-v2';
 
 const emptyState = () => ({
   cases: [],
@@ -82,6 +84,22 @@ export function getRecoveryHistory() {
   } catch {
     return [];
   }
+}
+
+/**
+ * Irreversibly removes all OSINT Command Center local persistence known to this version.
+ * This is deliberately separate from clearState(): clearing the active state preserves
+ * recovery history, while purgeLocalData() removes current state, recovery history,
+ * installation identity, and the dormant legacy state key.
+ */
+export function purgeLocalData(storage = globalThis.localStorage) {
+  if (!storage) throw new Error('Local storage is unavailable.');
+  const installationId = storage.getItem(INSTALLATION_KEY);
+  if (installationId) storage.removeItem(`${HISTORY_PREFIX}${installationId}`);
+  storage.removeItem(LEGACY_STATE_KEY);
+  if (installationId) storage.removeItem(`${'osint-enterprise-state-v2:'}${installationId}`);
+  storage.removeItem(INSTALLATION_KEY);
+  return emptyState();
 }
 
 export function addRecord(collection, record) {
