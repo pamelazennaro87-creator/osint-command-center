@@ -1,7 +1,6 @@
 import { createAuditEvent } from './model.js';
 import { getAnonymousInstallationId, getPrivateStateKey } from './privacy.js';
 
-const LEGACY_KEY = 'osint-enterprise-state-v1';
 const HISTORY_PREFIX = 'osint-enterprise-history-v2:';
 const HISTORY_LIMIT = 10;
 
@@ -38,6 +37,15 @@ function historyKey() {
   return `${HISTORY_PREFIX}${getAnonymousInstallationId()}`;
 }
 
+function readStoredState() {
+  try {
+    const raw = localStorage.getItem(getPrivateStateKey());
+    return raw ? normalize(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
 function appendHistory(previous) {
   if (!previous) return;
   try {
@@ -53,22 +61,12 @@ function appendHistory(previous) {
 }
 
 export function loadState() {
-  try {
-    const key = getPrivateStateKey();
-    const raw = localStorage.getItem(key);
-    if (raw) return normalize(JSON.parse(raw));
-    // Never auto-import the legacy global key: it has no installation ownership boundary.
-    // Keeping it untouched prevents accidental cross-installation data mixing.
-    return emptyState();
-  } catch {
-    return emptyState();
-  }
+  return readStoredState() || emptyState();
 }
 
 export function saveState(state) {
   const key = getPrivateStateKey();
-  const previousRaw = localStorage.getItem(key);
-  const previous = previousRaw ? normalize(JSON.parse(previousRaw)) : null;
+  const previous = readStoredState();
   const next = normalize(state);
   next.meta.lastUpdated = new Date().toISOString();
   next.meta.revision = Number(previous?.meta?.revision || next.meta.revision || 0) + 1;
