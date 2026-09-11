@@ -18,3 +18,14 @@ test('privacy audit blocks secret-bearing fields and reviews identity fields', (
   assert.ok(result.findings.some(x => x.severity === 'high' && x.key === 'token'));
   assert.ok(privacyAudit({ cases: [{ id: 'c1', email: 'person@example.com' }] }).some(x => x.severity === 'medium'));
 });
+
+test('embedded credentials in free-text fields are detected and redacted', () => {
+  const input = { notes: 'api_key=supersecret123', rationale: 'Bearer abcdefghijklmnop1234' };
+  const out = sanitizeForExport(input);
+  assert.match(out.notes, /REDACTED_SECRET/);
+  assert.match(out.rationale, /REDACTED_SECRET/);
+  const result = privacySummary({ cases: [input] });
+  assert.equal(result.status, 'BLOCK');
+  assert.ok(result.findings.some(x => x.severity === 'high' && x.key === 'notes'));
+  assert.ok(result.findings.some(x => x.severity === 'high' && x.key === 'rationale'));
+});
