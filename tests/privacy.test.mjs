@@ -29,3 +29,23 @@ test('embedded credentials in free-text fields are detected and redacted', () =>
   assert.ok(result.findings.some(x => x.severity === 'high' && x.key === 'notes'));
   assert.ok(result.findings.some(x => x.severity === 'high' && x.key === 'rationale'));
 });
+
+test('privacy boundary redacts JWTs, GitLab tokens and private keys in free text', () => {
+  const input = {
+    notes: 'glpat-abcdefghijklmnopqrstuvwxyz1234567890',
+    jwt: 'eyJabcdefghijk.abcdefghijk.abcdefghijk',
+    key: '-----BEGIN PRIVATE KEY-----\\nsecret-material\\n-----END PRIVATE KEY-----'
+  };
+  const out = sanitizeForExport(input);
+  assert.equal(out.notes, '[REDACTED_SECRET]');
+  assert.equal(out.jwt, '[REDACTED_SECRET]');
+  assert.equal(out.key, '[REDACTED_SECRET]');
+  assert.equal(privacySummary({ cases: [input] }).status, 'BLOCK');
+});
+
+test('installation identifiers are not exported or treated as analytical identity', () => {
+  const input = { installationId: 'anon-installation', title: 'case' };
+  const out = sanitizeForExport(input);
+  assert.equal(out.installationId, undefined);
+  assert.ok(privacyAudit({ cases: [input] }).some(x => x.severity === 'medium' && x.key === 'installationId'));
+});
