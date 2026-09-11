@@ -1,3 +1,5 @@
+@import url('./strategic-ui.css');
+
 /* Android / mobile-first enhancements */
 html, body { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
 button, .button, select, input, a {
@@ -60,21 +62,13 @@ button, .button, select, input, a {
     border-radius: 12px;
     padding: 10px 12px;
   }
-  #languageControl {
-    margin-left: 0 !important;
-  }
+  #languageControl { margin-left: 0 !important; }
   .metric, .section, .aside, .challenge, .wide, .signal-board, .next-actions, .focus-strip {
     grid-column: span 12 !important;
   }
-  .signal-board {
-    grid-template-columns: 1fr !important;
-  }
-  .bias-grid {
-    grid-template-columns: 1fr 1fr !important;
-  }
-  .challenge-grid, .report-grid {
-    grid-template-columns: 1fr 1fr !important;
-  }
+  .signal-board { grid-template-columns: 1fr !important; }
+  .bias-grid { grid-template-columns: 1fr 1fr !important; }
+  .challenge-grid, .report-grid { grid-template-columns: 1fr 1fr !important; }
   .actions button, .button {
     flex: 1 1 auto;
     justify-content: center;
@@ -86,18 +80,11 @@ button, .button, select, input, a {
     overflow-y: auto;
     border-radius: 16px 16px 0 0;
   }
-  .modal.open {
-    align-items: flex-end;
-    padding: 0;
-  }
-  .graph-canvas svg.living-svg {
-    min-height: 220px;
-  }
+  .modal.open { align-items: flex-end; padding: 0; }
+  .graph-canvas svg.living-svg { min-height: 220px; }
 }
 
 @media (max-width: 600px) {
-  .bias-grid, .challenge-grid, .report-grid {
-    grid-template-columns: 1fr !important;
-  }
+  .bias-grid, .challenge-grid, .report-grid { grid-template-columns: 1fr !important; }
   .top { display: block; }
 }
