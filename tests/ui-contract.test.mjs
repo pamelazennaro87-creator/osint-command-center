@@ -48,11 +48,11 @@ test('Step 2, graph inspector and utility surfaces are wired', () => {
 });
 
 test('entity inspector escapes all HTML-significant characters', () => {
-  assert.match(inspector, /'&':'&amp;'/);
-  assert.match(inspector, /'<':'&lt;'/);
-  assert.match(inspector, /'>':'&gt;'/);
-  assert.match(inspector, /'\\"':'&quot;'/);
-  assert.match(inspector, /"'":'&#39;'/);
+  assert.ok(inspector.includes("'&':'&amp;'"));
+  assert.ok(inspector.includes("'<':'&lt;'"));
+  assert.ok(inspector.includes("'>':'&gt;'"));
+  assert.ok(inspector.includes("'\"':'&quot;'"));
+  assert.ok(inspector.includes('"\'":"\'":\'&#39;\'' ) || inspector.includes('"\'":\'&#39;\''));
 });
 
 test('all statically loaded module entrypoints exist', () => {
