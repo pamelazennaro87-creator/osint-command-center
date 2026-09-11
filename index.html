@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <meta name="theme-color" content="#071014">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OSINT CC">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon.svg">
+<link rel="stylesheet" href="./src/mobile.css">
 <meta name="description" content="Evidence-first OSINT investigation workspace with living graph, Bias Radar, Red Team Mode and decision integrity.">
 <title>OSINT Command Center — Living Analyst Cockpit</title>
 <style>
@@ -104,7 +112,7 @@ body.atm-elevated .status .dot{background:var(--warn);box-shadow:0 0 10px #e6bd6
 .graph-canvas .edge{stroke:#31535a;stroke-width:1.4;transition:stroke .3s}
 .graph-canvas .edge.supported{stroke:#69d7d0;stroke-width:1.8}
 .graph-canvas .edge.unsupported{stroke:#e77979;stroke-dasharray:5 4;opacity:.75}
-.graph-canvas .node{fill:url(#nodeGrad);stroke:#69d7d0;stroke-width:1.6;transition:stroke-width .15s,filter .15s}
+.graph-canvas .node{fill:url(#nodeGrad);stroke:#69d7d0;stroke-width:1.6;transition:stroke-width .15s;filter .15s}
 .graph-canvas .entity-node{cursor:grab}
 .graph-canvas .entity-node:active{cursor:grabbing}
 .graph-canvas .entity-node:hover .node,.graph-canvas .entity-node:focus .node{stroke-width:3;filter:drop-shadow(0 0 10px #69d7d0aa)}
@@ -121,18 +129,16 @@ body.atm-elevated .status .dot{background:var(--warn);box-shadow:0 0 10px #e6bd6
 .graph-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:8px}
 .graph-legend .supported{color:var(--a)}.graph-legend .unsupported{color:var(--danger)}
 .graph-empty.living{padding:40px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
-@media(max-width:900px){.shell{grid-template-columns:1fr}.side{position:sticky;height:auto;border-right:0;border-bottom:1px solid var(--line)}.nav{grid-template-columns:repeat(4,1fr);margin-top:17px}.note{display:none}.main{padding:20px 15px}.metric,.section,.aside,.challenge,.wide{grid-column:span 12}.challenge-grid,.bias-grid{grid-template-columns:1fr 1fr}.signal-board{grid-template-columns:1fr 1fr}.report-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:600px){.nav{grid-template-columns:repeat(2,1fr)}.top,.challenge-head,.toolbar,.focus-strip{display:block}.status{margin-top:10px;width:max-content}.main{padding:18px 12px}.signal-board,.report-grid,.bias-grid{grid-template-columns:1fr}.signal-cell{min-height:auto}}
 </style>
 </head>
 <body>
 <div class="shell">
 <aside class="side"><div class="brand">OSINT COMMAND CENTER<span>LIVING ANALYST COCKPIT</span></div><nav class="nav" aria-label="Workspace navigation">
-<button class="active" data-view="command" aria-current="page">◈ Command Center</button><button data-view="cases">▣ Cases</button><button data-view="evidence">⌁ Evidence</button><button data-view="entities">◎ Entities &amp; Graph</button><button data-view="hypotheses">◇ Hypotheses</button><button data-view="contradictions">⚠ Contradictions</button><button data-view="reports">▤ Reports</button><button data-view="governance">⊙ Governance</button>
+<button class="active" data-view="command" aria-current="page">◈ Command</button><button data-view="cases">▣ Cases</button><button data-view="evidence">⌁ Evidence</button><button data-view="entities">◎ Graph</button><button data-view="hypotheses">◇ Hypotheses</button><button data-view="contradictions">⚠ Contradictions</button><button data-view="reports">▤ Reports</button><button data-view="governance">⊙ Governance</button>
 </nav><div class="note">OPERATING PRINCIPLE<br><strong>Find the signal. Trace the evidence. Challenge the conclusion.</strong></div></aside>
 <main class="main">
 <header class="top"><div><div class="ey">Operations / Intelligence</div><h1 id="pageTitle" class="title">Command Center</h1><p id="pageSub" class="sub">Evidence, uncertainty and competing explanations in one decision layer.</p></div><div class="status"><span class="dot"></span><span id="runtimeStatus">Local intelligence workspace</span></div></header>
-<div class="super-toolbar"><input id="commandSearch" class="command-search" type="search" placeholder="Search the workspace…" aria-label="Search workspace"><span class="super-kbd">Ctrl / ⌘ K</span></div>
+<div class="super-toolbar"><input id="commandSearch" class="command-search" type="search" placeholder="Search the workspace…" aria-label="Search workspace" inputmode="search" enterkeyhint="search"></div>
 <section id="view-command" class="view active"><section class="grid">
 <div id="focusStrip" class="focus-strip"></div>
 <article id="biasRadarPanel" class="card wide"></article>
@@ -149,7 +155,7 @@ body.atm-elevated .status .dot{background:var(--warn);box-shadow:0 0 10px #e6bd6
 </section></section>
 <section id="view-cases" class="view workspace"><div class="toolbar"><h2>Cases</h2><button class="button primary" data-action="new-case">+ New investigation</button></div><div id="casesList"></div></section>
 <section id="view-evidence" class="view workspace"><div class="toolbar"><h2>Evidence</h2><button class="button primary" data-action="new-evidence">+ Add evidence</button></div><div id="evidenceList"></div></section>
-<section id="view-entities" class="view workspace"><div class="toolbar"><h2>Entities &amp; Living Graph</h2><span class="tag">FORCE · DRAG · EVIDENCE-LINKED</span></div><div id="entitiesList"></div></section>
+<section id="view-entities" class="view workspace"><div class="toolbar"><h2>Entities & Living Graph</h2><span class="tag">FORCE · DRAG · EVIDENCE-LINKED</span></div><div id="entitiesList"></div></section>
 <section id="view-hypotheses" class="view workspace"><div class="toolbar"><h2>Hypotheses</h2><button class="button primary" data-action="new-hypothesis">+ Add hypothesis</button></div><div id="hypothesesList"></div></section>
 <section id="view-contradictions" class="view workspace"><div class="toolbar"><h2>Contradictions</h2><button class="button" data-action="triage">Run triage</button></div><div id="contradictionsList"></div></section>
 <section id="view-reports" class="view workspace"><div class="toolbar"><h2>Reports</h2><button class="button primary" data-action="create-report">Generate report</button></div><div id="reportPreview"></div></section>
