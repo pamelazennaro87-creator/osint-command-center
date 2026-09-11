@@ -22,15 +22,15 @@ function inspectEntity(id) {
   if (!entity) return;
   const inspector = ensureInspector();
   const relationships = (state.relationships || []).filter(r => r.fromEntityId === id || r.toEntityId === id);
-  const evidenceIds = new Set(relationships.flatMap(r => r.evidenceIds || []));
-  const directEvidence = (state.evidence || []).filter(e => evidenceIds.has(e.id));
+  const relationshipEvidenceIds = new Set(relationships.flatMap(r => r.evidenceIds || []));
+  const directEvidence = (state.evidence || []).filter(e => relationshipEvidenceIds.has(e.id) || (e.entityIds || []).includes(id));
   const sources = new Set(directEvidence.map(e => e.sourceId).filter(Boolean));
   const relatedEntities = relationships.map(r => {
     const otherId = r.fromEntityId === id ? r.toEntityId : r.fromEntityId;
     return state.entities.find(e => e.id === otherId)?.name;
   }).filter(Boolean);
   $('inspectorName').textContent = entity.name || 'Unnamed entity';
-  $('inspectorBody').innerHTML = `<div class="ins-grid"><div><small>Type</small><strong>${esc(entity.type || 'unknown')}</strong></div><div><small>Relationships</small><strong>${relationships.length}</strong></div><div><small>Evidence</small><strong>${directEvidence.length}</strong></div><div><small>Sources</small><strong>${sources.size}</strong></div></div><div class="loop-action"><strong>LINKED ENTITIES</strong><small>${esc(relatedEntities.join(' · ') || 'None recorded')}</small></div><div class="loop-action"><strong>EVIDENCE FOOTPRINT</strong>${directEvidence.slice(0, 6).map(e => `<small>${esc(e.title || 'Evidence')} · ${esc(e.status || 'UNKNOWN')} · ${pct(e.confidence)}%</small>`).join('') || '<small>No relationship-linked evidence. This node is not proof of a relationship.</small>'}</div>`;
+  $('inspectorBody').innerHTML = `<div class="ins-grid"><div><small>Type</small><strong>${esc(entity.type || 'unknown')}</strong></div><div><small>Relationships</small><strong>${relationships.length}</strong></div><div><small>Evidence</small><strong>${directEvidence.length}</strong></div><div><small>Sources</small><strong>${sources.size}</strong></div></div><div class="loop-action"><strong>LINKED ENTITIES</strong><small>${esc(relatedEntities.join(' · ') || 'None recorded')}</small></div><div class="loop-action"><strong>EVIDENCE FOOTPRINT</strong>${directEvidence.slice(0, 8).map(e => `<small>${esc(e.title || 'Evidence')} · ${esc(e.status || 'UNKNOWN')} · ${pct(e.confidence)}%</small>`).join('') || '<small>No evidence is linked to this node yet.</small>'}</div>`;
   inspector.classList.add('open');
 }
 
