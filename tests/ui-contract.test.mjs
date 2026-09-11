@@ -71,6 +71,16 @@ test('entity inspector escapes all HTML-significant characters', () => {
   assert.match(inspector, /&#39;/);
 });
 
+test('entity inspector has an accessible modal focus contract', () => {
+  assert.match(inspector, /aria-modal', 'true'/, 'Inspector must expose modal semantics');
+  assert.match(inspector, /aria-hidden', 'false'/, 'Inspector must expose open state');
+  assert.match(inspector, /lastFocused/, 'Inspector must retain the invoking control');
+  assert.match(inspector, /lastFocused\.focus\(\)/, 'Inspector must restore focus on close');
+  assert.match(inspector, /e\.key !== 'Tab'/, 'Inspector focus trap must handle Tab');
+  assert.match(inspector, /e\.shiftKey/, 'Inspector focus trap must support reverse Tab');
+  assert.match(inspector, /e\.key === 'Escape'/, 'Inspector must close with Escape');
+});
+
 test('all statically loaded module entrypoints exist', () => {
   const scripts = [...html.matchAll(/src="([^"]+\.js)"/g)].map(m => m[1]).filter(Boolean);
   for (const script of scripts) {
