@@ -14,7 +14,7 @@ import { tickVisuals, renderLivingGraph, destroyGraph } from './visual-engine.js
 import { t, bootI18n } from './core/i18n.js';
 
 const $ = id => document.getElementById(id);
-const esc = v => String(v ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;' }[c]));
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const pct = v => Math.round(Math.max(0, Math.min(1, Number(v) || 0)) * 100);
 function getMeta() { return { command: [t('nav.command'), t('section.challenge.sub')], cases: [t('nav.cases'), t('empty.cases.hint')], evidence: [t('nav.evidence'), t('empty.evidence.hint')], entities: [t('nav.entities'), t('graph.living')], hypotheses: [t('nav.hypotheses'), t('empty.hypotheses.hint')], contradictions: [t('nav.contradictions'), t('empty.contradictions.hint')], reports: [t('nav.reports'), t('action.report')], governance: [t('nav.governance'), t('section.integrity')] }; }
 function refresh() { render(loadState()); }
