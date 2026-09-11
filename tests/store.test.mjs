@@ -49,7 +49,7 @@ test('purgeLocalData removes current state, recovery history, installation id, a
   storage.set('osint-enterprise-history-v2:purge-installation', JSON.stringify([{ state: { cases: [{ id: 'older-secret' }] } }]));
   storage.set('osint-enterprise-state-v1', JSON.stringify({ cases: [{ id: 'legacy-secret' }] }));
 
-  const purged = purgeLocalData(storage);
+  const purged = purgeLocalData(globalThis.localStorage);
 
   assert.deepEqual(purged.cases, []);
   assert.equal(storage.getItem('osint-installation-id-v2'), null);
