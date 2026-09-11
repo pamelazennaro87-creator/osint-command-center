@@ -19,12 +19,13 @@ function addAiSupport(state, verification) {
   const source = state.sources[0];
   const aiEvidence = createEvidence({ id: 'ev_ai', caseId: state.cases[0].id, sourceId: source.id, title: 'AI-assisted support', claim: 'ai-assisted support', status: 'FACT', confidence: 0.8, aiAssisted: true, humanVerified: true, aiVerification: verification });
   state.evidence.push(aiEvidence);
-  state.hypotheses[0].evidenceFor.push(aiEvidence.id);
+  state.hypotheses[0].evidenceFor.push(aiEvidence.id, 'ev_falsifier');
   return state;
 }
 
 test('falsifier boolean alone cannot satisfy the approval gate', () => {
-  const result = evaluateDecision(baseState(null).decisions[0], baseState(null));
+  const state = baseState(null);
+  const result = evaluateDecision(state.decisions[0], state);
   assert.equal(result.status, 'BLOCKED');
   assert.match(result.blockingReasons.join(' '), /falsifier testing lacks evidence-backed provenance/i);
 });
