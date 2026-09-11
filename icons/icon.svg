@@ -1,8 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="OSINT Command Center">
-  <rect width="512" height="512" rx="96" fill="#071014"/>
-  <circle cx="256" cy="256" r="150" fill="none" stroke="#69d7d0" stroke-width="28"/>
-  <circle cx="256" cy="256" r="70" fill="#69d7d0"/>
-  <circle cx="256" cy="120" r="28" fill="#69d7d0" opacity="0.7"/>
-  <circle cx="380" cy="320" r="22" fill="#69d7d0" opacity="0.55"/>
-  <circle cx="140" cy="300" r="18" fill="#69d7d0" opacity="0.45"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">OSINT Command Center</title>
+  <desc id="desc">A forensic signal mark combining a target, evidence nodes and an open analysis frame.</desc>
+  <rect width="512" height="512" rx="112" fill="#050b0e"/>
+  <path d="M112 184V128h56M328 128h56v56M384 328v56h-56M184 384h-56v-56" fill="none" stroke="#64e1d7" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="256" cy="256" r="118" fill="none" stroke="#1c454b" stroke-width="20"/>
+  <circle cx="256" cy="256" r="76" fill="none" stroke="#64e1d7" stroke-width="12"/>
+  <path d="M256 158v196M158 256h196" stroke="#2d7476" stroke-width="8" stroke-linecap="round"/>
+  <path d="M256 158L145 208M354 300l-98-44M158 354l98-98" fill="none" stroke="#64e1d7" stroke-width="8" stroke-linecap="round" opacity=".75"/>
+  <circle cx="256" cy="256" r="28" fill="#64e1d7"/>
+  <circle cx="145" cy="208" r="15" fill="#9af5ee"/>
+  <circle cx="354" cy="300" r="15" fill="#9af5ee"/>
+  <circle cx="158" cy="354" r="15" fill="#9af5ee"/>
 </svg>
