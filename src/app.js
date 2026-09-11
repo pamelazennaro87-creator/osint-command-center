@@ -10,6 +10,7 @@ import { temporalAnalysis, buildTemporalTimeline } from './core/temporal.js';
 import { sanitizeForExport, privacySummary } from './core/privacy.js';
 import { buildIntelligenceMatrix } from './core/intelligence.js';
 import { computeBiasRadar, buildRedTeamPressure } from './core/bias-radar.js';
+import { tickVisuals, renderLivingGraph, destroyGraph, applyAtmosphere } from './visual-engine.js';
 
 const $ = id => document.getElementById(id);
 const META = {
@@ -389,10 +390,11 @@ function renderLists(s) {
     ent.innerHTML = `
       <div class="graph-shell">
         <div class="graph-head">
-          <div><strong>Live relationship graph</strong><small>${s.entities.length} entities · ${relationships.length} relationships</small></div>
+          <div><strong>Living relationship graph</strong><small>${s.entities.length} entities · ${relationships.length} relationships</small></div>
           <div class="actions">
+            <button class="button" data-action="new-entity">+ Entity</button>
             <button class="button" data-action="new-relationship">+ Relationship</button>
-            <button class="button" data-action="fit-graph">Rebuild graph</button>
+            <button class="button" data-action="fit-graph">Restart simulation</button>
           </div>
         </div>
         <div id="graphCanvas" class="graph-canvas"></div>
@@ -430,52 +432,6 @@ function renderLists(s) {
         <span class="tag ${x.severity === 'high' ? 'bad' : 'warn'}">${esc(String(x.severity || 'review').toUpperCase())}</span>
       </div>
     </article>`).join('') || '<div class="empty"><strong>No contradictions recorded.</strong><small>Run triage to actively search for conflicts instead of waiting for them.</small><button class="button primary" data-action="triage">Run triage</button></div>';
-
-  renderGraph(s);
-}
-
-function renderGraph(s) {
-  const p = $('graphCanvas');
-  if (!p) return;
-  const ns = s.entities.slice(0, 16);
-  const rs = filterByActiveCase(s, 'relationships') || [];
-  if (!ns.length) {
-    p.innerHTML = '<div class="graph-empty">No entities. Add one to activate the graph.</div>';
-    return;
-  }
-  const w = 920, h = 320, cx = w / 2, cy = h / 2;
-  const r = Math.min(120, Math.max(60, ns.length * 12));
-  const pos = new Map(ns.map((n, i) => {
-    const angle = (i / ns.length) * Math.PI * 2 - Math.PI / 2;
-    return [n.id, { x: cx + r * Math.cos(angle), y: cy + r * 0.72 * Math.sin(angle) }];
-  }));
-
-  const lines = rs.map(x => {
-    const a = pos.get(x.fromEntityId), b = pos.get(x.toEntityId);
-    if (!a || !b) return '';
-    const hasEvidence = (x.evidenceIds || []).length > 0;
-    return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="edge ${hasEvidence ? 'supported' : 'unsupported'}" data-rel="${esc(x.id)}"/>`;
-  }).join('');
-
-  const nodes = ns.map(n => {
-    const p = pos.get(n.id);
-    const degree = rs.filter(r => r.fromEntityId === n.id || r.toEntityId === n.id).length;
-    return `<g class="entity-node" data-entity-id="${esc(n.id)}" tabindex="0" role="button" aria-label="Entity ${esc(n.name)}">
-      <circle cx="${p.x}" cy="${p.y}" r="${18 + Math.min(8, degree * 2)}" class="node"/>
-      <text x="${p.x}" y="${p.y + 4}" text-anchor="middle">${esc(n.name).slice(0, 14)}</text>
-    </g>`;
-  }).join('');
-
-  p.innerHTML = `
-    <svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Evidence relationship graph">
-      ${lines}${nodes}
-    </svg>
-    <div class="graph-legend">
-      <span>● Entity (size = degree)</span>
-      <span class="supported">— Supported link</span>
-      <span class="unsupported">— Unsupported link</span>
-      <span>Click a node to inspect</span>
-    </div>`;
 }
 
 function renderTemporal(s) {
@@ -576,6 +532,9 @@ function render(s) {
   renderMatrix(s);
   renderReports(s);
   renderGovernance(s);
+  // Living layer
+  tickVisuals(s);
+  try { renderLivingGraph(s); } catch (e) { console.warn('Living graph fallback', e); }
 }
 
 function runTriage() {
@@ -629,7 +588,7 @@ function bind() {
     if (act === 'triage') { runTriage(); showView('contradictions'); }
     if (act === 'create-report') report();
     if (act === 'preview-json') alert(JSON.stringify(sanitizeForExport(loadState()), null, 2).slice(0, 5000));
-    if (act === 'fit-graph') renderGraph(loadState());
+    if (act === 'fit-graph') { destroyGraph(); renderLivingGraph(loadState()); }
     if (act === 'refresh-matrix') renderMatrix(loadState());
     if (act === 'clear-focus') { setActiveCase(null); refresh(); }
     if (act === 'toggle-redteam') {
