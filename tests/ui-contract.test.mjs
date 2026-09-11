@@ -60,7 +60,7 @@ test('graph UX exposes keyboard and relationship-state affordances', () => {
   assert.match(graphUx, /is-selected/, 'Selected-node state missing');
   assert.match(graphUx, /is-neighbor/, '1-hop neighbor state missing');
   assert.match(graphUx, /Evidence-backed|Inferred|Unsupported/, 'Edge-state tooltip semantics missing');
-  assert.match(graphUx, /data-action = 'new-entity'/, 'Empty graph CTA missing');
+  assert.match(graphUx, /dataset\.action\s*=\s*'new-entity'/, 'Empty graph CTA missing');
 });
 
 test('entity inspector escapes all HTML-significant characters', () => {
