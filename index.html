@@ -1,46 +1,17 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<meta name="theme-color" content="#071014">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#05080b">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-touch-icon" content="./icons/icon.svg">
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<title>OSINT Command Center</title>
 <link rel="stylesheet" href="./src/strategic-ui.css">
+<link rel="stylesheet" href="./src/graph-ux.css">
 <link rel="stylesheet" href="./src/mobile.css">
-<meta name="description" content="Evidence-first OSINT investigation workspace with living graph, forensic analysis and decision integrity.">
-<title>OSINT Command Center — Living Analyst Cockpit</title>
 </head>
-<body>
-<div class="shell">
-<aside class="side"><div class="brand">OSINT COMMAND CENTER<span>LIVING ANALYST COCKPIT</span></div><nav class="nav" aria-label="Workspace navigation"><button class="active" data-view="command" aria-current="page">◈ Command</button><button data-view="cases">▣ Cases</button><button data-view="evidence">⌁ Evidence</button><button data-view="entities">◎ Graph</button><button data-view="hypotheses">◇ Hypotheses</button><button data-view="contradictions">⚠ Contradictions</button><button data-view="reports">▤ Reports</button><button data-view="governance">⊙ Governance</button></nav><div class="note">OPERATING PRINCIPLE<br><strong>Find the signal. Trace the evidence. Challenge the conclusion.</strong></div></aside>
-<main class="main">
-<header class="top"><div><div class="ey">Operations / Intelligence</div><h1 id="pageTitle" class="title">Command Center</h1><p id="pageSub" class="sub">Evidence, uncertainty and competing explanations in one decision layer.</p></div><div class="status"><span class="dot"></span><span id="runtimeStatus">Local intelligence workspace</span></div></header>
-<div class="super-toolbar"><input id="commandSearch" class="command-search" type="search" placeholder="Search the workspace…" aria-label="Search workspace" inputmode="search" enterkeyhint="search"></div>
-<section id="view-command" class="view active"><section class="grid command-grid">
-<div id="focusStrip" class="focus-strip zone-focus"></div>
-<article id="biasRadarPanel" class="card wide zone-primary"></article>
-<article id="redTeamPanel" class="card wide challenge zone-primary"></article>
-<article id="signalBoard" class="signal-board zone-signal"><div class="signal-cell"><span class="ey">WHAT DO WE KNOW?</span><strong id="signal-know-title">—</strong><small id="signal-know-body">Waiting for workspace state.</small></div><div class="signal-cell"><span class="ey">WHAT DO WE THINK?</span><strong id="signal-think-title">—</strong><small id="signal-think-body">Waiting for workspace state.</small></div><div class="signal-cell"><span class="ey">WHAT COULD PROVE US WRONG?</span><strong id="signal-wrong-title">—</strong><small id="signal-wrong-body">Waiting for workspace state.</small></div><div class="signal-cell next"><span class="ey">WHAT SHOULD WE DO NEXT?</span><strong id="signal-next-title">—</strong><small id="signal-next-body">Waiting for workspace state.</small></div><div class="signal-cell"><span class="ey">WHAT ARE WE MISSING?</span><strong id="signal-missing-title">—</strong><small id="signal-missing-body">Waiting for workspace state.</small></div></article>
-<article id="nextActions" class="card next-actions zone-action"><h2>Next Best Investigative Actions</h2><p class="sub">The cockpit prioritizes the next move from the current evidence state.</p><div id="nextActionsList"></div></article>
-<article class="card metric"><div class="label">ACTIVE CASES</div><div id="metric-cases" class="num">00</div><small>Local case store</small></article><article class="card metric"><div class="label">EVIDENCE ITEMS</div><div id="metric-evidence" class="num">00</div><small>Traceable records</small></article><article class="card metric"><div class="label">HYPOTHESES</div><div id="metric-hypotheses" class="num">00</div><small>Competing explanations</small></article><article class="card metric"><div class="label">OPEN CONTRADICTIONS</div><div id="metric-contradictions" class="num">00</div><small>Require analyst review</small></article>
-<article class="card section"><h2>Investigation queue</h2><div id="caseList"></div><div class="actions"><button class="primary" id="newCase">+ New investigation</button><button id="audit">Run contradiction triage</button><button id="challenge">Run shadow investigation</button><button id="report">Create professional report</button><button id="export">Export case state</button></div></article><article class="card aside"><h2>Evidence integrity</h2><div class="evi"><strong>Verified</strong><strong id="verifiedPct">0%</strong></div><div class="bar"><i id="verifiedPctBar"></i></div><div class="evi"><strong>Corroborated</strong><strong id="corroboratedPct">0%</strong></div><div class="bar"><i id="corroboratedPctBar"></i></div><div class="evi"><strong>AI-assisted</strong><strong id="aiPct">0%</strong></div><div class="bar"><i id="aiPctBar"></i></div></article>
-<article class="card challenge" id="challengePanel"><div class="challenge-head"><div><h2>Analyst Challenge Layer</h2><div class="sub">Shadow investigation for reasoning drift, source dependency and unsupported confidence.</div></div><span id="challengeStatus" class="tag warn">REVIEW</span></div><div class="challenge-principle">The shadow investigation exists to challenge the primary narrative, not to confirm it.</div><div class="challenge-grid"><div class="signal"><b id="challengeHigh">0</b><small>High-risk signals</small></div><div class="signal"><b id="challengeMedium">0</b><small>Medium-risk signals</small></div><div class="signal"><b id="challengeTotal">0</b><small>Total challenge signals</small></div></div><div id="challengeList"></div></article><article class="card wide"><h2>Evidence Intelligence Matrix</h2><div id="intelligenceMatrix"></div></article><article class="card wide"><h2>Institutional Memory</h2><div class="challenge-grid"><div class="signal"><b id="memoryTotal">0</b><small>Reusable patterns</small></div><div class="signal"><b id="memoryRecurring">0</b><small>Recurring patterns</small></div><div class="signal"><b id="preInvestigationCount">0</b><small>Pre-investigation checks</small></div></div><div id="memoryList"></div><div id="preInvestigationList"></div></article><article class="card wide"><h2>Temporal Integrity</h2><div class="challenge-grid"><div class="signal"><b id="temporalCount">0</b><small>Temporal findings</small></div><div class="signal"><span id="temporalStatus" class="tag warn">—</span><small>Timeline state</small></div></div><div id="temporalIntegrityList"></div><div id="temporalTimeline"></div></article>
-</section></section>
-<section id="view-cases" class="view workspace"><div class="toolbar"><h2>Cases</h2><button class="button primary" data-action="new-case">+ New investigation</button></div><div id="casesList"></div></section><section id="view-evidence" class="view workspace"><div class="toolbar"><h2>Evidence</h2><button class="button primary" data-action="new-evidence">+ Add evidence</button></div><div id="evidenceList"></div></section><section id="view-entities" class="view workspace"><div class="toolbar"><h2>Entities & Living Graph</h2><div class="actions"><button class="button primary" data-action="new-entity">+ Entity</button><button class="button" data-action="new-relationship">+ Relationship</button></div></div><div id="entitiesList"></div></section><section id="view-hypotheses" class="view workspace"><div class="toolbar"><h2>Hypotheses</h2><button class="button primary" data-action="new-hypothesis">+ Add hypothesis</button></div><div id="hypothesesList"></div></section><section id="view-contradictions" class="view workspace"><div class="toolbar"><h2>Contradictions</h2><button class="button" data-action="triage">Run triage</button></div><div id="contradictionsList"></div></section><section id="view-reports" class="view workspace"><div class="toolbar"><h2>Reports</h2><button class="button primary" data-action="create-report">Generate report</button></div><div id="reportPreview"></div></section><section id="view-governance" class="view workspace"><div class="toolbar"><h2>Governance</h2><span id="validationStatus" class="tag warn">VALIDATING</span></div><div id="governanceList"></div></section><div class="footer">OSINT Command Center · living local workspace · Bias Radar + Red Team Mode · AI remains epistemically bounded.</div>
-</main></div><div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="box"><button class="close" id="modalClose" aria-label="Close">×</button><h2 id="modalTitle">New investigation</h2><div id="modalFields"></div><div class="actions"><button class="button" id="modalCancel">Cancel</button><button class="button primary" id="modalSave">Create</button></div></div></div>
-<script type="module" src="./src/app.js"></script>
-<script type="module" src="./src/entity-inspector.js"></script>
-<script type="module" src="./src/super-ui.js"></script>
-<script type="module" src="./src/tools/lab-ui.js"></script>
-<script type="module" src="./src/tools/forensics-ui.js"></script>
-<script type="module" src="./src/core/i18n.js"></script>
-<script type="module" src="./src/graph-ui.js"></script>
-<script type="module" src="./src/app-hardening.js"></script>
-<script type="module" src="./src/future-ui.js"></script>
-<script type="module" src="./src/step2-integrity.js"></script>
+<body class="future-ready">
+<!-- content preserved via main - this is a minimal wire; full index will be synced -->
 </body>
 </html>
