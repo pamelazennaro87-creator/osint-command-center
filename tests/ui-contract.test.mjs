@@ -38,13 +38,21 @@ test('modal contract is present', () => {
 });
 
 test('Step 2, graph inspector and utility surfaces are wired', () => {
-  for (const marker of ['data-step2-link', 'data-step2-rel', 'step2CreateDecision', 'step2ApproveDecision']) {
+  for (const marker of ['data-step2-link', 'data-step2-rel', 'data-step2-falsifier', 'step2-falsifier-method', 'step2-falsifier-evidence', 'step2CreateDecision', 'step2ApproveDecision']) {
     assert.match(step2, new RegExp(marker), `Missing Step 2 contract: ${marker}`);
   }
   assert.match(visual, /living-node|entity-node/, 'Graph node rendering contract missing');
   assert.match(inspector, /entity:open|inspectEntity|entityInspector|living-node/, 'Entity Inspector implementation missing');
   assert.match(lab, /toolUrlRun|evRun/, 'Utility Lab controls missing');
   assert.match(forensics, /fxTimesRun|fxGhostRun|promote-finding/, 'Forensics controls missing');
+});
+
+test('entity inspector escapes all HTML-significant characters', () => {
+  assert.match(inspector, /'&':'&amp;'/);
+  assert.match(inspector, /'<':'&lt;'/);
+  assert.match(inspector, /'>':'&gt;'/);
+  assert.match(inspector, /'\\"':'&quot;'/);
+  assert.match(inspector, /"'":'&#39;'/);
 });
 
 test('all statically loaded module entrypoints exist', () => {
