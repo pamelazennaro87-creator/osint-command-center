@@ -1,5 +1,5 @@
 import { loadState, updateRecord, addRecord, getActiveCaseId } from './core/store.js';
-import { createDecision } from './core/model.js';
+import { createDecision, now } from './core/model.js';
 import { evaluateDecision, transitionDecision } from './core/decision.js';
 import { computeBiasRadar, buildRedTeamPressure } from './core/bias-radar.js';
 
@@ -14,8 +14,9 @@ function decorateHypotheses(s, caseId) {
   root.querySelectorAll('.step2-hypothesis-controls').forEach(x => x.remove());
   root.querySelectorAll('.data-card').forEach((card, i) => {
     const h = (s.hypotheses || []).filter(x => !caseId || x.caseId === caseId)[i]; if (!h) return;
+    const test = h.falsifierTest || {};
     const box = document.createElement('div'); box.className = 'step2-hypothesis-controls actions';
-    box.innerHTML = `<select aria-label="Evidence for hypothesis" class="step2-evidence-select"><option value="">Link evidence…</option>${evidenceOptions(s, caseId)}</select><button class="button" data-step2-link="for">Support</button><button class="button" data-step2-link="against">Challenge</button>`;
+    box.innerHTML = `<select aria-label="Evidence for hypothesis" class="step2-evidence-select"><option value="">Link evidence…</option>${evidenceOptions(s, caseId)}</select><button class="button" data-step2-link="for">Support</button><button class="button" data-step2-link="against">Challenge</button><div class="falsifier-verification"><input class="step2-falsifier-method" maxlength="120" placeholder="Falsifier test method" value="${esc(test.method || '')}"><input class="step2-falsifier-note" maxlength="240" placeholder="What was checked / result note" value="${esc(test.note || '')}"><select aria-label="Evidence backing falsifier test" class="step2-falsifier-evidence"><option value="">Evidence backing test…</option>${evidenceOptions(s, caseId)}</select><button class="button" data-step2-falsifier="test">Record evidence-backed test</button><small>${esc(test.provenance || 'NOT_RECORDED')} · ${esc(test.testedAt || 'not tested')}</small></div>`;
     box.dataset.hypothesisId = h.id; card.appendChild(box);
   });
 }
@@ -63,6 +64,14 @@ function handleClick(e) {
     const s = loadState(), h = (s.hypotheses || []).find(x => x.id === hypothesisId); if (!h) return;
     const field = support.dataset.step2Link === 'for' ? 'evidenceFor' : 'evidenceAgainst', other = field === 'evidenceFor' ? 'evidenceAgainst' : 'evidenceFor';
     updateRecord('hypotheses', hypothesisId, { [field]: Array.from(new Set([...(h[field] || []), evidenceId])), [other]: (h[other] || []).filter(id => id !== evidenceId), status: 'tested', updatedAt: new Date().toISOString() });
+    window.dispatchEvent(new Event('occ:re-render')); return;
+  }
+  const falsifier = e.target.closest('[data-step2-falsifier]');
+  if (falsifier) {
+    const box = falsifier.closest('.step2-hypothesis-controls'), hypothesisId = box?.dataset.hypothesisId, evidenceId = box?.querySelector('.step2-falsifier-evidence')?.value, method = box?.querySelector('.step2-falsifier-method')?.value.trim(), note = box?.querySelector('.step2-falsifier-note')?.value.trim();
+    if (!hypothesisId || !evidenceId || !method || !note) return;
+    const s = loadState(), h = (s.hypotheses || []).find(x => x.id === hypothesisId); if (!h || !h.falsifier?.trim()) return;
+    updateRecord('hypotheses', hypothesisId, { falsifierTested: true, falsifierResult: 'inconclusive', falsifierTest: { provenance: 'EVIDENCE_BACKED', method, evidenceIds: [evidenceId], note, testedAt: now() }, status: 'tested', updatedAt: now() });
     window.dispatchEvent(new Event('occ:re-render')); return;
   }
   const attach = e.target.closest('[data-step2-rel="link"]');
