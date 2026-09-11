@@ -8,7 +8,7 @@ globalThis.localStorage = {
   removeItem: key => storage.delete(key)
 };
 
-const { loadState, saveState, getRecoveryHistory } = await import('../src/core/store.js');
+const { loadState, saveState, getRecoveryHistory, purgeLocalData } = await import('../src/core/store.js');
 
 test('legacy global state is never auto-imported into a private installation', () => {
   storage.clear();
@@ -40,4 +40,20 @@ test('malformed primary state is recoverable without crashing save', () => {
   const saved = saveState(state);
   assert.equal(saved.meta.revision, 1);
   assert.equal(loadState().meta.revision, 1);
+});
+
+test('purgeLocalData removes current state, recovery history, installation id, and legacy state', () => {
+  storage.clear();
+  storage.set('osint-installation-id-v2', 'purge-installation');
+  storage.set('osint-enterprise-state-v2:purge-installation', JSON.stringify({ cases: [{ id: 'secret-case' }] }));
+  storage.set('osint-enterprise-history-v2:purge-installation', JSON.stringify([{ state: { cases: [{ id: 'older-secret' }] } }]));
+  storage.set('osint-enterprise-state-v1', JSON.stringify({ cases: [{ id: 'legacy-secret' }] }));
+
+  const purged = purgeLocalData(storage);
+
+  assert.deepEqual(purged.cases, []);
+  assert.equal(storage.getItem('osint-installation-id-v2'), null);
+  assert.equal(storage.getItem('osint-enterprise-state-v2:purge-installation'), null);
+  assert.equal(storage.getItem('osint-enterprise-history-v2:purge-installation'), null);
+  assert.equal(storage.getItem('osint-enterprise-state-v1'), null);
 });
