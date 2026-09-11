@@ -82,9 +82,20 @@ export function evaluateDecision(decision, state = {}) {
   checks.push(check('CONFIDENCE_ALIGNED', 'Confidence aligned with evidence', confidenceAligned ? 'PASS' : 'BLOCKED', confidenceAligned ? 'Hypothesis confidence is not materially above supporting evidence.' : 'At least one hypothesis is materially more confident than its supporting evidence.'));
   if (!confidenceAligned) blockingReasons.push('Confidence exceeds the strength of supporting evidence.');
 
-  const aiGuardrail = support.some(e => e.aiAssisted && !e.humanVerified);
-  checks.push(check('AI_GUARDRAIL', 'AI evidence verified', aiGuardrail ? 'BLOCKED' : 'PASS', aiGuardrail ? 'AI-assisted supporting evidence lacks human verification.' : 'No unverified AI-assisted supporting evidence detected.'));
-  if (aiGuardrail) blockingReasons.push('Unverified AI-assisted evidence supports the decision.');
+  const unverifiedAiEvidence = support.filter(e => {
+    if (!e.aiAssisted) return false;
+    const verification = e.aiVerification || {};
+    const methodValid = String(verification.method || '').trim().length >= 3;
+    const noteValid = String(verification.note || '').trim().length >= 3;
+    const verifiedAtValid = Boolean(verification.verifiedAt);
+    const verificationEvidence = Array.isArray(verification.evidenceIds) ? verification.evidenceIds : [];
+    const hasEvidenceTrace = verificationEvidence.some(id => evidence.some(candidate => candidate.id === id && candidate.id !== e.id));
+    const evidenceBacked = verification.provenance === 'EVIDENCE_BACKED' && methodValid && noteValid && verifiedAtValid && hasEvidenceTrace;
+    return !evidenceBacked;
+  });
+  const aiGuardrail = unverifiedAiEvidence.length > 0;
+  checks.push(check('AI_GUARDRAIL', 'AI evidence verified', aiGuardrail ? 'BLOCKED' : 'PASS', aiGuardrail ? `${unverifiedAiEvidence.length} AI-assisted supporting evidence item(s) lack evidence-backed verification provenance.` : 'All AI-assisted supporting evidence has evidence-backed verification provenance.'));
+  if (aiGuardrail) blockingReasons.push('AI-assisted evidence requires evidence-backed verification provenance; a boolean humanVerified flag is insufficient.');
 
   const caseDrift = driftFindings.filter(f => !f.caseId || f.caseId === current.caseId);
   const criticalFindings = caseDrift.filter(f => findingTypes.has(f.type) && f.severity === 'high');
