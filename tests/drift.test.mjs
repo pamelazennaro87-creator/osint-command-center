@@ -14,7 +14,8 @@ function cleanDecision(state, overrides={}) {
   addSource(state,'src_1','a'); addSource(state,'src_2','b');
   addEvidence(state,{id:'ev_for',sourceId:'src_1',confidence:.8});
   addEvidence(state,{id:'ev_against',sourceId:'src_2',confidence:.5,claim:'Alternative explanation'});
-  state.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',evidenceFor:['ev_for'],evidenceAgainst:['ev_against'],confidence:.75,falsifier:'Independent disproof',falsifierTested:true,falsifierResult:'not_triggered'}));
+  addEvidence(state,{id:'ev_falsifier',sourceId:'src_2',confidence:.8,claim:'Falsifier check evidence'});
+  state.hypotheses.push(createHypothesis({id:'h1',caseId:'case_1',statement:'Claim',evidenceFor:['ev_for'],evidenceAgainst:['ev_against'],confidence:.75,falsifier:'Independent disproof',falsifierTested:true,falsifierResult:'not_triggered',falsifierTest:{provenance:'EVIDENCE_BACKED',method:'source comparison',note:'Compared independent records against the falsifier condition.',testedAt:new Date().toISOString(),evidenceIds:['ev_falsifier']}}));
   return createDecision({id:'d1',caseId:'case_1',title:'Decision',statement:'Proceed',linkedHypothesisIds:['h1'],rationale:'Evidence supports the decision after challenge.',riskAcceptance:'Residual risk accepted by owner.',owner:'analyst',...overrides});
 }
 
