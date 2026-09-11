@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseUrl, extractSignals, usernamePermutations, compareIdentities, dmsToDecimal, decimalToDms, geoDistanceBearing, normalizeTimestamp, textDiff, evidenceStrength } from '../src/tools/lab.js';
+import { parseChat, behavioralProfile, conversationDNA, coordinationDetector, narrativeDrift, claimTrap, ghostEntitySignals } from '../src/tools/behavioral-forensics.js';
+import { findingToEvidence } from '../src/tools/forensic-bridge.js';
+import { supportedLocales, t, setLocale } from '../src/core/i18n.js';
 
 test('URL parser normalizes and removes fragment',()=>{const r=parseUrl('Example.COM/a?x=1#secret');assert.equal(r.normalized,'https://example.com/a?x=1');assert.equal(r.hostname,'example.com');assert.equal(r.registrableDomain,'example.com');});
 test('unsafe URL schemes are rejected',()=>{assert.throws(()=>parseUrl('javascript:alert(1)'),/unsafe URL scheme/);assert.throws(()=>parseUrl('file:///etc/passwd'),/unsafe URL scheme/);});
@@ -11,3 +14,12 @@ test('geo conversion and distance are deterministic',()=>{assert.equal(dmsToDeci
 test('timestamp normalizer returns canonical representation',()=>{const r=normalizeTimestamp('2026-09-10T17:30:00Z');assert.equal(r.iso,'2026-09-10T17:30:00.000Z');assert.equal(typeof r.epochMs,'number');});
 test('text diff reports changed lines only',()=>{assert.deepEqual(textDiff('a\nb','a\nc'),[{line:2,before:'b',after:'c'}]);});
 test('evidence heuristic is bounded and banded',()=>{const r=evidenceStrength({sourceReliability:1,corroboration:1,provenance:1,humanVerified:true});assert.equal(r.score,100);assert.equal(r.band,'STRONG');});
+test('chat parser extracts speakers, timestamps, URLs and intervals',()=>{const r=parseChat('2026-09-10T10:00:00Z Alice: Hi\n2026-09-10T10:02:00Z Bob: https://example.org');assert.equal(r.messages.length,2);assert.equal(r.messages[1].speaker,'Bob');assert.equal(r.messages[1].urls[0],'https://example.org');assert.equal(r.messages[1].responseIntervalSec,120);});
+test('behavioral profile stays observable and non-diagnostic',()=>{const r=behavioralProfile(parseChat('Alice: Why now?\nAlice: https://example.org\nBob: OK').messages);assert.ok(r.speakers.Alice.signals.includes('QUESTIONING_PATTERN'));assert.match(r.method,/observable/i);assert.match(r.warning,/diagnosis/i);});
+test('conversation DNA reports similarity without authorship attribution',()=>{const r=conversationDNA([{message:'blue sky today'}],[{message:'blue sky today'}]);assert.equal(r.similarity,1);assert.match(r.warning,/authorship/i);});
+test('coordination detector finds temporal proximity only',()=>{const r=coordinationDetector([{name:'A',events:[{time:'2026-09-10T10:00:00Z'}]},{name:'B',events:[{time:'2026-09-10T10:00:30Z'}]}]);assert.equal(r.clusters.length,1);assert.match(r.warning,/temporal/i);});
+test('narrative drift exposes token changes',()=>{const r=narrativeDrift([{source:'A',text:'I was home'},{source:'B',text:'I was work'}]);assert.equal(r.deltas.length,1);assert.ok(r.deltas[0].added.includes('work'));});
+test('claim trap is a triage signal',()=>{const r=claimTrap('Alice owns Company X',[{claim:'Alice'}]);assert.equal(typeof r.coverage,'number');assert.match(r.warning,/verification/i);});
+test('ghost entity radar finds unlinked entities',()=>{const r=ghostEntitySignals([{id:'e1',name:'A'},{id:'e2',name:'B'}],[{entityIds:['e1']}]);assert.deepEqual(r.unlinked.map(x=>x.id),['e2']);});
+test('forensic bridge creates explicit UNKNOWN evidence',()=>{const e=findingToEvidence({caseId:'case_1',analysisType:'claim_trap',title:'Claim signal',claim:'Support gap',details:'triage'});assert.equal(e.caseId,'case_1');assert.equal(e.kind,'forensic_signal');assert.equal(e.status,'UNKNOWN');assert.equal(e.confidence,0);assert.equal(e.humanVerified,false);assert.match(e.doesNotProve,/proof/i);});
+test('all supported locales resolve canonical navigation labels',()=>{const locales=supportedLocales();assert.deepEqual(locales,['en','de','it','fr','es','pt','uk','pl','tr','ja','ko','zh']);for(const locale of locales){assert.notEqual(t('nav.command',locale),'nav.command');assert.notEqual(t('nav.evidence',locale),'nav.evidence');assert.notEqual(t('live.principle',locale),'live.principle');}assert.equal(setLocale('it'),'it');assert.equal(setLocale('en'),'en');});
