@@ -10,6 +10,8 @@ The system must never imply that GitHub Pages, a browser, a network connection, 
 
 A user's intelligence data must never be exposed to another user. The current browser-local implementation isolates state by an anonymous installation identifier. This is privacy isolation for the local prototype, not multi-tenant server authorization.
 
+Legacy state from the old global `osint-enterprise-state-v1` key is not automatically imported because that key has no installation ownership boundary. This deliberately favors isolation over silent migration. Recovery history is stored under the same installation namespace and is bounded to the most recent local revisions.
+
 Production must enforce isolation server-side on every read, write, search, export, and analytical operation. Client-supplied case IDs, tenant IDs, roles, or actor identities must never be trusted as authorization proof. Test explicitly for IDOR/BOLA, enumeration, cross-tenant joins, export leakage, and privilege escalation.
 
 ## Privacy-by-design requirements
@@ -19,11 +21,24 @@ Production must enforce isolation server-side on every read, write, search, expo
 3. Keep secrets, tokens, cookies and credentials out of source control and client bundles.
 4. Do not place personal identity data in URLs, client logs, telemetry, analytics, or error messages unless strictly necessary.
 5. Sanitize exports and reports to prevent accidental identity or secret leakage.
-6. Avoid third-party tracking/analytics by default.
-7. Encrypt traffic with TLS and encrypt persistent sensitive data at rest in production.
-8. Define retention and deletion controls appropriate to the deployment and jurisdiction.
-9. Keep identity/authentication data logically separated from intelligence data where practical.
-10. Record security-relevant actions in a server-authoritative, append-only or tamper-evident audit system.
+6. Detect secret-like content inside free-text fields; field-name filtering alone is insufficient.
+7. Avoid third-party tracking/analytics by default.
+8. Encrypt traffic with TLS and encrypt persistent sensitive data at rest in production.
+9. Define retention and deletion controls appropriate to the deployment and jurisdiction.
+10. Keep identity/authentication data logically separated from intelligence data where practical.
+11. Record security-relevant actions in a server-authoritative, append-only or tamper-evident audit system in production.
+
+## Local integrity and recovery boundary
+
+The local prototype provides bounded revision history and monotonically increasing local revisions to improve recovery from accidental corruption or destructive edits. These controls are **recovery and continuity controls, not cryptographic tamper-proofing**: a party who fully controls the browser storage can alter both the current state and its recovery history.
+
+The product must therefore distinguish:
+
+- **local revision history** — recovery aid;
+- **analytical audit trail** — contextual record of actions;
+- **tamper-evident/server-authoritative audit** — production integrity control.
+
+No local mechanism should be described as immutable evidence or authoritative institutional history.
 
 ## Production security requirements
 
