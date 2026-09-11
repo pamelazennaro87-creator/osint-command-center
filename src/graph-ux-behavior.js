@@ -3,6 +3,7 @@
  * Enhances the living graph after visual-engine renders it:
  * - 1-hop focus
  * - edge hover tip
+ * - keyboard-accessible nodes
  * - empty-state CTA when missing
  * Does not touch model/store/decision/privacy.
  */
@@ -65,9 +66,7 @@
             const t = n.getAttribute('transform') || '';
             const tm = /translate\(([^,]+),([^)]+)\)/.exec(t);
             if (!tm) return;
-            if (Math.hypot(parseFloat(tm[1]) - ox, parseFloat(tm[2]) - oy) < 8) {
-              n.classList.add('is-neighbor');
-            }
+            if (Math.hypot(parseFloat(tm[1]) - ox, parseFloat(tm[2]) - oy) < 8) n.classList.add('is-neighbor');
           });
         }
       });
@@ -80,27 +79,23 @@
       if (edge.dataset.uxBound) return;
       edge.dataset.uxBound = '1';
       edge.style.pointerEvents = 'stroke';
-      if (!edge.classList.contains('inferred') && !edge.classList.contains('supported') && !edge.classList.contains('unsupported')) {
-        edge.classList.add('unsupported');
-      }
+      if (!edge.classList.contains('inferred') && !edge.classList.contains('supported') && !edge.classList.contains('unsupported')) edge.classList.add('unsupported');
       edge.addEventListener('pointerenter', (e) => {
         edge.classList.add('is-hovered');
-        const kind = edge.classList.contains('supported')
-          ? 'Evidence-backed'
-          : edge.classList.contains('inferred')
-            ? 'Inferred'
-            : 'Unsupported';
-        const conf = edge.dataset.confidence ? Math.round(Number(edge.dataset.confidence) * 100) + '%' : '';
-        tip.textContent = conf ? kind + ' · ' + conf + ' confidence' : kind;
+        const kind = edge.classList.contains('supported') ? 'Evidence-backed' : edge.classList.contains('inferred') ? 'Inferred' : 'Unsupported';
+        const confidence = Number(edge.dataset.confidence);
+        const conf = Number.isFinite(confidence) ? ` · ${Math.round(confidence * 100)}% confidence` : '';
+        tip.textContent = `${kind}${conf}`;
         tip.hidden = false;
         tip.classList.add('open');
-        tip.style.left = e.clientX + 12 + 'px';
-        tip.style.top = e.clientY + 12 + 'px';
+        tip.style.left = `${e.clientX + 12}px`;
+        tip.style.top = `${e.clientY + 12}px`;
       });
       edge.addEventListener('pointermove', (e) => {
-        if (tip.hidden) return;
-        tip.style.left = e.clientX + 12 + 'px';
-        tip.style.top = e.clientY + 12 + 'px';
+        if (!tip.hidden) {
+          tip.style.left = `${e.clientX + 12}px`;
+          tip.style.top = `${e.clientY + 12}px`;
+        }
       });
       edge.addEventListener('pointerleave', () => {
         edge.classList.remove('is-hovered');
@@ -116,17 +111,23 @@
       node.dataset.uxBound = '1';
       if (!node.getAttribute('role')) node.setAttribute('role', 'button');
       if (!node.getAttribute('tabindex')) node.setAttribute('tabindex', '0');
-      node.addEventListener('click', (e) => {
-        e.stopPropagation();
+      const activate = () => {
         const id = node.dataset.entityId;
         if (id) selectNode(svg, id);
+      };
+      node.addEventListener('click', activate);
+      node.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        activate();
       });
     });
-    svg.addEventListener('click', (e) => {
-      if (e.target === svg || e.target.id === 'linkLayer' || e.target.id === 'nodeLayer') {
-        clearFocus(svg);
-      }
-    });
+    if (svg.dataset.uxCanvasBound !== '1') {
+      svg.dataset.uxCanvasBound = '1';
+      svg.addEventListener('click', (event) => {
+        if (event.target === svg || event.target.id === 'linkLayer' || event.target.id === 'nodeLayer') clearFocus(svg);
+      });
+    }
   }
 
   function enhanceEmpty(canvas) {
@@ -155,16 +156,13 @@
   function boot() {
     const canvas = $('graphCanvas');
     if (canvas) {
-      const obs = new MutationObserver(() => enhance());
-      obs.observe(canvas, { childList: true, subtree: true });
+      const observer = new MutationObserver(() => enhance());
+      observer.observe(canvas, { childList: true, subtree: true });
     }
     enhance();
     window.addEventListener('occ:re-render', () => setTimeout(enhance, 50));
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
-  } else {
-    boot();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+  else boot();
 })();
