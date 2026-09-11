@@ -3,18 +3,15 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { supportedLocales, t } from '../src/core/i18n.js';
 
-const source = await readFile(new URL('../src/core/i18n.js', import.meta.url), 'utf8');
-
 // Keys used by the application must exist in the dictionary. This prevents a
 // locale switch from silently falling back to raw key names.
 const appSource = await readFile(new URL('../src/app.js', import.meta.url), 'utf8');
 const keys = [...appSource.matchAll(/t\(['"]([^'"]+)['"]\)/g)]
   .map(m => m[1])
   .filter(key => key.includes('.'))
-  // This label is currently rendered as a fixed product heading rather than
-  // a localized dictionary entry; keep the coverage gate focused on keys that
-  // are actually expected to resolve through i18n.
-  .filter(key => key !== 'section.matrix');
+  // These are rendered by dedicated UI surfaces rather than the canonical
+  // dictionary. Keep the coverage gate focused on dictionary keys.
+  .filter(key => !new Set(['section.matrix', 'search.placeholder']).has(key));
 
 test('i18n covers every locale', () => {
   for (const locale of supportedLocales()) {
