@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +12,7 @@ let server;
 let browser;
 let profile;
 let ws;
+let browserStderr = '';
 let nextId = 1;
 const pending = new Map();
 const runtimeErrors = [];
@@ -54,6 +55,15 @@ async function browserFetch(url) {
   return r.json();
 }
 
+function findBrowser() {
+  for (const candidate of ['google-chrome', 'chromium', 'chromium-browser']) {
+    try {
+      return execFileSync('sh', ['-lc', `command -v ${candidate}`], { encoding: 'utf8' }).trim();
+    } catch {}
+  }
+  throw new Error('No Chromium-compatible browser executable found.');
+}
+
 async function boot() {
   profile = await mkdtemp(join(tmpdir(), 'occ-ui-'));
   server = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1', '--directory', ROOT], { stdio: 'ignore' });
@@ -61,11 +71,13 @@ async function boot() {
     try { return (await fetch(`http://127.0.0.1:${PORT}/index.html`)).ok; } catch { return false; }
   });
 
-  browser = spawn('chromium', ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', `--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${profile}`, `http://127.0.0.1:${PORT}/index.html`], { stdio: 'ignore' });
+  const browserBin = findBrowser();
+  browser = spawn(browserBin, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${profile}`, `http://127.0.0.1:${PORT}/index.html`], { stdio: ['ignore', 'ignore', 'pipe'] });
+  browser.stderr.on('data', chunk => { browserStderr += chunk.toString(); });
   const target = await waitFor(async () => {
     const pages = await browserFetch(`http://127.0.0.1:${CDP_PORT}/json/list`);
     return pages.find(p => p.type === 'page' && p.url.includes('/index.html'));
-  });
+  }, 15000);
 
   ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
@@ -86,7 +98,11 @@ async function boot() {
   await cdp('Runtime.enable');
   await cdp('Page.enable');
   await evaluate(`localStorage.clear(); sessionStorage.clear(); location.reload()`);
-  await waitFor(async () => (await evaluate(`document.readyState === 'complete' && !!window.osintEnterprise`)) === true);
+  try {
+    await waitFor(async () => (await evaluate(`document.readyState === 'complete' && !!window.osintEnterprise`)) === true);
+  } catch (error) {
+    throw new Error(`${error.message} Browser stderr: ${browserStderr.slice(-4000)}`);
+  }
   await new Promise(r => setTimeout(r, 300));
 }
 
