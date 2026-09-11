@@ -1,13 +1,6 @@
-import { clearState, loadState } from './core/store.js';
+import { loadState } from './core/store.js';
 import { privacySummary } from './core/privacy.js';
 import { validateState } from './core/validation.js';
-
-const DEMO_CASE_TITLE = 'Demo: entity relationship review';
-
-function isDemoSeed(state) {
-  return Array.isArray(state?.cases) && state.cases.length === 1 && state.cases[0]?.title === DEMO_CASE_TITLE &&
-    Array.isArray(state?.sources) && state.sources.some(x => x?.name === 'Demo public source');
-}
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -45,16 +38,7 @@ function renderRuntime(state) {
 }
 
 function harden() {
-  let state = loadState();
-
-  // Production workspace must never silently populate itself with synthetic investigative data.
-  if (isDemoSeed(state)) {
-    clearState();
-    state = loadState();
-    window.dispatchEvent(new CustomEvent('occ:re-render'));
-  }
-
-  // Expose only aggregate runtime health; never expose raw records or identifiers.
+  const state = loadState();
   renderRuntime(state);
 
   window.addEventListener('error', event => {
