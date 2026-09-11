@@ -42,14 +42,8 @@ async function cdp(method, params = {}) {
 }
 
 async function evaluate(expression, awaitPromise = true) {
-  const result = await cdp('Runtime.evaluate', {
-    expression,
-    returnByValue: true,
-    awaitPromise
-  });
-  if (result.exceptionDetails) {
-    throw new Error(result.exceptionDetails.exception?.description || 'Browser evaluation failed');
-  }
+  const result = await cdp('Runtime.evaluate', { expression, returnByValue: true, awaitPromise });
+  if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || 'Browser evaluation failed');
   return result.result?.result?.value;
 }
 
@@ -66,15 +60,10 @@ async function boot() {
     try { return (await fetch(`http://127.0.0.1:${PORT}/index.html`)).ok; } catch { return false; }
   });
 
-  browser = spawn('chromium', [
-    '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
-    '--remote-debugging-port=9222', `--user-data-dir=${profile}`,
-    `http://127.0.0.1:${PORT}/index.html`
-  ], { stdio: 'ignore' });
-
+  browser = spawn('chromium', ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--remote-debugging-port=9222', `--user-data-dir=${profile}`, `http://127.0.0.1:${PORT}/index.html`], { stdio: 'ignore' });
   const target = await waitFor(async () => {
     const pages = await browserFetch('http://127.0.0.1:9222/json/list');
-    return pages.find(p => p.type === 'page' && p.url.includes(`/index.html`));
+    return pages.find(p => p.type === 'page' && p.url.includes('/index.html'));
   });
 
   ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -107,7 +96,7 @@ async function click(selector) {
 }
 
 async function fill(selector, value) {
-  const ok = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set || Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set; if (setter) setter.call(el, ${JSON.stringify(value)}); else el.value = ${JSON.stringify(value)}; el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); return true; })()`);
+  const ok = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set; if (setter) setter.call(el, ${JSON.stringify(value)}); else el.value = ${JSON.stringify(value)}; el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); return true; })()`);
   assert.equal(ok, true, `Missing form field: ${selector}`);
 }
 
@@ -135,7 +124,7 @@ test.before(async () => boot());
 test.after(async () => shutdown());
 
 test('runtime UI smoke: navigation, CRUD modals, graph inspector and core commands', async () => {
-  assert.equal(await evaluate(`document.title`), 'OSINT Command Center — Living Analyst Cockpit');
+  assert.equal(await evaluate('document.title'), 'OSINT Command Center — Living Analyst Cockpit');
   assert.equal(await viewIs('command'), true, 'Command view must boot active');
 
   for (const view of ['cases', 'evidence', 'entities', 'hypotheses', 'contradictions', 'reports', 'governance', 'command']) {
@@ -203,7 +192,7 @@ test('runtime UI smoke: navigation, CRUD modals, graph inspector and core comman
   assert.equal(await viewIs('contradictions'), true, 'Triage must preserve contradictions view');
 
   await click('[data-view="command"]');
-  await waitFor(async () => Boolean(await evaluate(`document.querySelector('#biasRadarPanel [data-action="toggle-redteam"]`))));
+  await waitFor(async () => Boolean(await evaluate(`document.querySelector('#biasRadarPanel [data-action="toggle-redteam"]')`)));
   await click('#biasRadarPanel [data-action="toggle-redteam"]');
   assert.match(await text('#runtimeStatus'), /RED TEAM ACTIVE/);
 
