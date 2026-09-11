@@ -37,10 +37,18 @@ jobs:
           test -f src/core/engine.js
           test -f src/core/i18n.js
           test -f src/core/bias-radar.js
+          test -f src/core/daid2.js
+          test -f src/core/investigation-loop.js
+          test -f src/tools/lab.js
+          test -f src/tools/forensics.js
+          test -f src/tools/forensics-ui.js
+          test -f src/tools/behavioral-forensics.js
+          test -f src/tools/forensic-bridge.js
           test -f src/visual-engine.js
           test -f src/app.js
           test -f src/super-ui.js
           test -f manifest.webmanifest
           grep -q 'type="module" src="./src/app.js"' index.html
+          grep -q 'forensics-ui.js' index.html
           grep -q 'manifest.webmanifest' index.html
           grep -q 'viewport' index.html
