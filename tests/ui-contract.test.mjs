@@ -9,12 +9,11 @@ const html = read('index.html');
 const app = read('src/app.js');
 const step2 = read('src/step2-integrity.js');
 const visual = read('src/visual-engine.js');
+const graphUx = read('src/graph-ux-behavior.js');
 const inspector = read('src/entity-inspector.js');
 const lab = read('src/tools/lab-ui.js');
 const forensics = read('src/tools/forensics-ui.js');
 
-// Only data-action values are treated as interactive controls. Static element
-// ids such as challengePanel/challengeStatus are state surfaces, not actions.
 const renderedActions = [...html.matchAll(/data-action="([^"]+)"/g)]
   .map(m => m[1])
   .filter(value => /^(new-|export|import|open-|create-|triage|clear-|audit|challenge|report)/.test(value));
@@ -45,6 +44,23 @@ test('Step 2, graph inspector and utility surfaces are wired', () => {
   assert.match(inspector, /entity:open|inspectEntity|entityInspector|living-node/, 'Entity Inspector implementation missing');
   assert.match(lab, /toolUrlRun|evRun/, 'Utility Lab controls missing');
   assert.match(forensics, /fxTimesRun|fxGhostRun|promote-finding/, 'Forensics controls missing');
+});
+
+test('graph UX preserves the single inspector event path', () => {
+  assert.match(html, /id="graphCanvas"/, 'Graph canvas host missing');
+  assert.match(graphUx, /dataset\.entityId/, 'Graph UX does not identify selected nodes');
+  assert.match(graphUx, /dataset\.uxBound/, 'Graph UX lacks duplicate-handler guard');
+  assert.doesNotMatch(graphUx, /stopPropagation\(\)/, 'Graph UX must not block the document-level Entity Inspector');
+  assert.match(inspector, /document\.addEventListener\('click'/, 'Entity Inspector document delegation missing');
+});
+
+test('graph UX exposes keyboard and relationship-state affordances', () => {
+  assert.match(graphUx, /event\.key !== 'Enter'/, 'Keyboard activation missing');
+  assert.match(graphUx, /event\.key !== ' '/, 'Space activation missing');
+  assert.match(graphUx, /is-selected/, 'Selected-node state missing');
+  assert.match(graphUx, /is-neighbor/, '1-hop neighbor state missing');
+  assert.match(graphUx, /Evidence-backed|Inferred|Unsupported/, 'Edge-state tooltip semantics missing');
+  assert.match(graphUx, /data-action = 'new-entity'/, 'Empty graph CTA missing');
 });
 
 test('entity inspector escapes all HTML-significant characters', () => {
