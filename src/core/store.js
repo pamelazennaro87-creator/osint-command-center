@@ -24,7 +24,6 @@ function normalize(state) {
   const base = emptyState();
   const merged = { ...base, ...state };
   merged.meta = { ...base.meta, ...(state?.meta || {}) };
-  // Ensure all collections are arrays
   for (const key of Object.keys(base)) {
     if (key !== 'meta' && !Array.isArray(merged[key])) merged[key] = [];
   }
@@ -66,10 +65,7 @@ export function addRecord(collection, record) {
     objectId: record.id,
     details: `Created ${collection} record`
   }));
-  // Auto-focus new case
-  if (collection === 'cases') {
-    state.meta.activeCaseId = record.id;
-  }
+  if (collection === 'cases') state.meta.activeCaseId = record.id;
   return saveState(state);
 }
 
@@ -119,7 +115,6 @@ export function getActiveCaseId(state = loadState()) {
 export function filterByActiveCase(state, collection) {
   const activeId = getActiveCaseId(state);
   if (!activeId || !Array.isArray(state[collection])) return state[collection] || [];
-  // Collections that are case-scoped
   const scoped = new Set(['evidence', 'relationships', 'hypotheses', 'contradictions', 'decisions']);
   if (!scoped.has(collection)) return state[collection];
   return state[collection].filter(x => x.caseId === activeId);
@@ -137,11 +132,4 @@ export function isRedTeamMode(state = loadState()) {
 
 export function clearState() {
   return saveState(emptyState());
-}
-
-export function seedDemoData(factory) {
-  const state = loadState();
-  if (state.cases.length) return state;
-  const demo = factory();
-  return saveState(demo);
 }
