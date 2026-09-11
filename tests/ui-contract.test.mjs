@@ -8,19 +8,16 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const html = read('index.html');
 const app = read('src/app.js');
 const step2 = read('src/step2-integrity.js');
-const graph = read('src/graph-ui.js');
 const visual = read('src/visual-engine.js');
 const inspector = read('src/entity-inspector.js');
 const lab = read('src/tools/lab-ui.js');
 const forensics = read('src/tools/forensics-ui.js');
 
-// Test the controls that actually exist in the current UI rather than a
-// historical list of actions. This prevents stale contracts from blocking
-// legitimate UI redesigns while still requiring every rendered action to have
-// an implementation owner.
-const renderedActions = [...html.matchAll(/(?:data-action|id)="([^"]+)"/g)]
+// Only data-action values are treated as interactive controls. Static element
+// ids such as challengePanel/challengeStatus are state surfaces, not actions.
+const renderedActions = [...html.matchAll(/data-action="([^"]+)"/g)]
   .map(m => m[1])
-  .filter(value => /^(new-|export|import|open-|create-|triage|clear-|audit|challenge|report)$/.test(value) || /^(new-|export|import|open-|create-|triage|clear-|audit|challenge|report)/.test(value));
+  .filter(value => /^(new-|export|import|open-|create-|triage|clear-|audit|challenge|report)/.test(value));
 
 for (const action of [...new Set(renderedActions)]) {
   test(`rendered control ${action} has an implementation owner`, () => {
