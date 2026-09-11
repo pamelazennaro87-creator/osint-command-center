@@ -1,203 +1,44 @@
 /**
  * Professional i18n — key-based, re-render friendly.
- * Default: English. Full coverage for EN + IT, structure for DE/FR/ES.
+ * English is the canonical UI language. Evidence keeps its original language.
  */
-
-export const I18N_VERSION = '2.2';
-
-export const SUPPORTED_LOCALES = Object.freeze({
-  en: { label: 'English', native: 'English', dir: 'ltr' },
-  it: { label: 'Italiano', native: 'Italiano', dir: 'ltr' },
-  de: { label: 'German', native: 'Deutsch', dir: 'ltr' },
-  fr: { label: 'French', native: 'Français', dir: 'ltr' },
-  es: { label: 'Spanish', native: 'Español', dir: 'ltr' }
+export const I18N_VERSION='3.0';
+export const SUPPORTED_LOCALES=Object.freeze({
+  en:{label:'English',native:'English',dir:'ltr'},de:{label:'German',native:'Deutsch',dir:'ltr'},it:{label:'Italian',native:'Italiano',dir:'ltr'},fr:{label:'French',native:'Français',dir:'ltr'},es:{label:'Spanish',native:'Español',dir:'ltr'},pt:{label:'Portuguese',native:'Português',dir:'ltr'},uk:{label:'Ukrainian',native:'Українська',dir:'ltr'},pl:{label:'Polish',native:'Polski',dir:'ltr'},tr:{label:'Turkish',native:'Türkçe',dir:'ltr'},ja:{label:'Japanese',native:'日本語',dir:'ltr'},ko:{label:'Korean',native:'한국어',dir:'ltr'},zh:{label:'Chinese',native:'中文',dir:'ltr'}
 });
-
-const STORAGE_KEY = 'occ.locale.v2';
-
-const DICT = {
-  'nav.command': { en: 'Command Center', it: 'Centro di Comando', de: 'Kommandozentrale', fr: 'Centre de commandement', es: 'Centro de mando' },
-  'nav.cases': { en: 'Cases', it: 'Casi', de: 'Fälle', fr: 'Dossiers', es: 'Casos' },
-  'nav.evidence': { en: 'Evidence', it: 'Prove', de: 'Beweise', fr: 'Preuves', es: 'Evidencias' },
-  'nav.entities': { en: 'Entities & Graph', it: 'Entità e Grafo', de: 'Entitäten & Graph', fr: 'Entités & Graphe', es: 'Entidades y grafo' },
-  'nav.hypotheses': { en: 'Hypotheses', it: 'Ipotesi', de: 'Hypothesen', fr: 'Hypothèses', es: 'Hipótesis' },
-  'nav.contradictions': { en: 'Contradictions', it: 'Contraddizioni', de: 'Widersprüche', fr: 'Contradictions', es: 'Contradicciones' },
-  'nav.reports': { en: 'Reports', it: 'Report', de: 'Berichte', fr: 'Rapports', es: 'Informes' },
-  'nav.governance': { en: 'Governance', it: 'Governance', de: 'Governance', fr: 'Gouvernance', es: 'Gobernanza' },
-  'brand.living': { en: 'LIVING ANALYST COCKPIT', it: 'COCKPIT ANALISTA VIVO', de: 'LEBENDIGES ANALYSTEN-COCKPIT', fr: 'COCKPIT ANALYSTE VIVANT', es: 'COCKPIT ANALISTA VIVO' },
-  'search.placeholder': { en: 'Search the workspace…', it: 'Cerca nel workspace…', de: 'Workspace durchsuchen…', fr: 'Rechercher…', es: 'Buscar…' },
-  'focus.none': { en: 'No active case', it: 'Nessun caso attivo', de: 'Kein aktiver Fall', fr: 'Aucun dossier actif', es: 'Ningún caso activo' },
-  'focus.none.hint': { en: 'Create or select an investigation to focus the workspace.', it: 'Crea o seleziona un\'indagine per focalizzare il workspace.', de: 'Fall erstellen oder wählen.', fr: 'Créez ou sélectionnez une enquête.', es: 'Crea o selecciona una investigación.' },
-  'focus.label': { en: 'FOCUS ·', it: 'FOCUS ·', de: 'FOKUS ·', fr: 'FOCUS ·', es: 'ENFOQUE ·' },
-  'focus.clear': { en: 'Clear focus', it: 'Rimuovi focus', de: 'Fokus aufheben', fr: 'Effacer le focus', es: 'Quitar enfoque' },
-  'focus.new': { en: '+ New case', it: '+ Nuovo caso', de: '+ Neuer Fall', fr: '+ Nouveau dossier', es: '+ Nuevo caso' },
-  'focus.create': { en: '+ New investigation', it: '+ Nuova indagine', de: '+ Neue Untersuchung', fr: '+ Nouvelle enquête', es: '+ Nueva investigación' },
-  'bias.title': { en: 'BIAS & INDEPENDENCE RADAR', it: 'RADAR BIAS E INDIPENDENZA', de: 'BIAS- & UNABHÄNGIGKEITS-RADAR', fr: 'RADAR BIAIS ET INDÉPENDANCE', es: 'RADAR DE SESGO E INDEPENDENCIA' },
-  'bias.index': { en: 'Structural Bias Index', it: 'Indice di Bias Strutturale', de: 'Struktureller Bias-Index', fr: 'Indice de biais structurel', es: 'Índice de sesgo estructural' },
-  'bias.activate': { en: '○ Activate Red Team Mode', it: '○ Attiva Red Team Mode', de: '○ Red Team Mode aktivieren', fr: '○ Activer le mode Red Team', es: '○ Activar modo Red Team' },
-  'bias.active': { en: '● Red Team Mode ON', it: '● Red Team Mode ON', de: '● Red Team Mode AN', fr: '● Mode Red Team ACTIVÉ', es: '● Modo Red Team ACTIVADO' },
-  'bias.mono': { en: 'Source mono-culture', it: 'Monocoltura fonti', de: 'Quellen-Monokultur', fr: 'Monoculture des sources', es: 'Monocultivo de fuentes' },
-  'bias.inflation': { en: 'Confidence inflation', it: 'Inflazione di confidenza', de: 'Konfidenz-Inflation', fr: 'Inflation de confiance', es: 'Inflación de confianza' },
-  'bias.untested': { en: 'Untested falsifiers', it: 'Falsificatori non testati', de: 'Ungetestete Falsifikatoren', fr: 'Falsificateurs non testés', es: 'Falsificadores no probados' },
-  'bias.ai': { en: 'Unverified AI evidence', it: 'Prove AI non verificate', de: 'Unverifizierte KI-Beweise', fr: 'Preuves IA non vérifiées', es: 'Evidencia IA no verificada' },
-  'bias.links': { en: 'Unsupported relationships', it: 'Relazioni non supportate', de: 'Nicht belegte Beziehungen', fr: 'Relations non étayées', es: 'Relaciones sin soporte' },
-  'bias.shadow': { en: 'Shadow investigation risk', it: 'Rischio shadow investigation', de: 'Shadow-Investigation-Risiko', fr: 'Risque d\'enquête parallèle', es: 'Riesgo de investigación sombra' },
-  'redteam.title': { en: 'Red Team Pressure Board', it: 'Red Team Pressure Board', de: 'Red-Team-Druckbrett', fr: 'Tableau de pression Red Team', es: 'Tablero de presión Red Team' },
-  'redteam.off': { en: 'Red Team Mode is off. Activate it from the Bias Radar to force cognitive friction on gaps and unsupported claims.', it: 'Red Team Mode spento. Attivalo dal Bias Radar.', de: 'Red Team Mode ist aus.', fr: 'Mode Red Team désactivé.', es: 'Modo Red Team desactivado.' },
-  'redteam.principle': { en: 'Cognitive friction is intentional. Resolve or explicitly accept each item before deciding.', it: 'L\'attrito cognitivo è intenzionale. Risolvi o accetta esplicitamente ogni elemento prima di decidere.', de: 'Kognitive Reibung ist beabsichtigt.', fr: 'La friction cognitive est intentionnelle.', es: 'La fricción cognitiva es intencional.' },
-  'metric.cases': { en: 'ACTIVE CASES', it: 'CASI ATTIVI', de: 'AKTIVE FÄLLE', fr: 'DOSSIERS ACTIFS', es: 'CASOS ACTIVOS' },
-  'metric.evidence': { en: 'EVIDENCE ITEMS', it: 'ELEMENTI DI PROVA', de: 'BEWEISELEMENTE', fr: 'ÉLÉMENTS DE PREUVE', es: 'ELEMENTOS DE EVIDENCIA' },
-  'metric.hypotheses': { en: 'HYPOTHESES', it: 'IPOTESI', de: 'HYPOTHESEN', fr: 'HYPOTHÈSES', es: 'HIPÓTESIS' },
-  'metric.contradictions': { en: 'OPEN CONTRADICTIONS', it: 'CONTRADDIZIONI APERTE', de: 'OFFENE WIDERSPRÜCHE', fr: 'CONTRADICTIONS OUVERTES', es: 'CONTRADICCIONES ABIERTAS' },
-  'action.new.investigation': { en: '+ New investigation', it: '+ Nuova indagine', de: '+ Neue Untersuchung', fr: '+ Nouvelle enquête', es: '+ Nueva investigación' },
-  'action.new.evidence': { en: '+ Add evidence', it: '+ Aggiungi prova', de: '+ Beweis hinzufügen', fr: '+ Ajouter une preuve', es: '+ Añadir evidencia' },
-  'action.new.entity': { en: '+ Entity', it: '+ Entità', de: '+ Entität', fr: '+ Entité', es: '+ Entidad' },
-  'action.new.hypothesis': { en: '+ Add hypothesis', it: '+ Aggiungi ipotesi', de: '+ Hypothese hinzufügen', fr: '+ Ajouter une hypothèse', es: '+ Añadir hipótesis' },
-  'action.new.relationship': { en: '+ Relationship', it: '+ Relazione', de: '+ Beziehung', fr: '+ Relation', es: '+ Relación' },
-  'action.triage': { en: 'Run contradiction triage', it: 'Esegui triage contraddizioni', de: 'Widerspruchs-Triage', fr: 'Triage des contradictions', es: 'Triage de contradicciones' },
-  'action.report': { en: 'Create professional report', it: 'Crea report professionale', de: 'Professionellen Bericht erstellen', fr: 'Créer un rapport professionnel', es: 'Crear informe profesional' },
-  'action.focus': { en: 'Focus case', it: 'Focalizza caso', de: 'Fall fokussieren', fr: 'Focaliser', es: 'Enfocar caso' },
-  'action.focused': { en: '● Focused', it: '● Focalizzato', de: '● Fokussiert', fr: '● Focalisé', es: '● Enfocado' },
-  'action.restart.sim': { en: 'Restart simulation', it: 'Riavvia simulazione', de: 'Simulation neu starten', fr: 'Redémarrer', es: 'Reiniciar' },
-  'section.challenge.sub': { en: 'Shadow investigation for reasoning drift, source dependency and unsupported confidence.', it: 'Shadow investigation per drift di ragionamento, dipendenza dalle fonti e confidenza non supportata.', de: 'Shadow-Investigation für Reasoning-Drift.', fr: 'Enquête parallèle pour dérive de raisonnement.', es: 'Investigación sombra para deriva de razonamiento.' },
-  'section.matrix': { en: 'Evidence Intelligence Matrix', it: 'Matrice di Intelligence delle Prove', de: 'Beweis-Intelligence-Matrix', fr: 'Matrice d\'intelligence des preuves', es: 'Matriz de inteligencia de evidencia' },
-  'section.integrity': { en: 'Evidence integrity', it: 'Integrità delle prove', de: 'Beweisintegrität', fr: 'Intégrité des preuves', es: 'Integridad de la evidencia' },
-  'graph.living': { en: 'Living relationship graph', it: 'Grafo relazionale vivo', de: 'Lebendiger Beziehungsgraph', fr: 'Graphe relationnel vivant', es: 'Grafo de relaciones vivo' },
-  'empty.cases': { en: 'No investigations yet.', it: 'Nessuna indagine ancora.', de: 'Noch keine Untersuchungen.', fr: 'Aucune enquête.', es: 'Aún no hay investigaciones.' },
-  'empty.cases.hint': { en: 'Start with an objective, not a conclusion.', it: 'Inizia con un obiettivo, non con una conclusione.', de: 'Mit einem Ziel beginnen.', fr: 'Commencez par un objectif.', es: 'Empieza con un objetivo.' },
-  'empty.evidence': { en: 'No evidence captured.', it: 'Nessuna prova catturata.', de: 'Keine Beweise erfasst.', fr: 'Aucune preuve.', es: 'Sin evidencia.' },
-  'empty.evidence.hint': { en: 'Every claim should carry a source and an uncertainty status.', it: 'Ogni affermazione deve avere una fonte e uno stato di incertezza.', de: 'Jede Behauptung braucht Quelle und Status.', fr: 'Chaque affirmation doit avoir une source.', es: 'Toda afirmación debe tener fuente.' },
-  'empty.hypotheses': { en: 'No hypotheses.', it: 'Nessuna ipotesi.', de: 'Keine Hypothesen.', fr: 'Aucune hypothèse.', es: 'Sin hipótesis.' },
-  'empty.hypotheses.hint': { en: 'Keep at least one alternative explanation alive when evidence is incomplete.', it: 'Mantieni almeno una spiegazione alternativa viva.', de: 'Mindestens eine Alternative offen halten.', fr: 'Gardez une alternative vivante.', es: 'Mantén una alternativa viva.' },
-  'empty.contradictions': { en: 'No contradictions recorded.', it: 'Nessuna contraddizione registrata.', de: 'Keine Widersprüche.', fr: 'Aucune contradiction.', es: 'Sin contradicciones.' },
-  'empty.contradictions.hint': { en: 'Run triage to actively search for conflicts.', it: 'Esegui il triage per cercare attivamente i conflitti.', de: 'Triage ausführen.', fr: 'Lancez le triage.', es: 'Ejecuta el triage.' },
-  'empty.relationships': { en: 'No relationships yet.', it: 'Nessuna relazione ancora.', de: 'Noch keine Beziehungen.', fr: 'Aucune relation.', es: 'Sin relaciones.' },
-  'empty.relationships.hint': { en: 'Connections should be supported by evidence, not proximity.', it: 'Le connessioni devono essere supportate da prove.', de: 'Verbindungen brauchen Beweise.', fr: 'Les connexions doivent être étayées.', es: 'Las conexiones necesitan evidencia.' },
-  'modal.case': { en: 'New investigation', it: 'Nuova indagine', de: 'Neue Untersuchung', fr: 'Nouvelle enquête', es: 'Nueva investigación' },
-  'modal.evidence': { en: 'Add evidence', it: 'Aggiungi prova', de: 'Beweis hinzufügen', fr: 'Ajouter une preuve', es: 'Añadir evidencia' },
-  'modal.entity': { en: 'Add entity', it: 'Aggiungi entità', de: 'Entität hinzufügen', fr: 'Ajouter une entité', es: 'Añadir entidad' },
-  'modal.hypothesis': { en: 'Add hypothesis', it: 'Aggiungi ipotesi', de: 'Hypothese hinzufügen', fr: 'Ajouter une hypothèse', es: 'Añadir hipótesis' },
-  'modal.relationship': { en: 'Add relationship', it: 'Aggiungi relazione', de: 'Beziehung hinzufügen', fr: 'Ajouter une relation', es: 'Añadir relación' },
-  'modal.cancel': { en: 'Cancel', it: 'Annulla', de: 'Abbrechen', fr: 'Annuler', es: 'Cancelar' },
-  'modal.create': { en: 'Create', it: 'Crea', de: 'Erstellen', fr: 'Créer', es: 'Crear' },
-  'modal.title': { en: 'Case title', it: 'Titolo del caso', de: 'Falltitel', fr: 'Titre', es: 'Título' },
-  'modal.objective': { en: 'Objective', it: 'Obiettivo', de: 'Ziel', fr: 'Objectif', es: 'Objetivo' },
-  'modal.priority': { en: 'Priority', it: 'Priorità', de: 'Priorität', fr: 'Priorité', es: 'Prioridad' },
-  'modal.claim': { en: 'Claim / Observation', it: 'Affermazione / Osservazione', de: 'Behauptung', fr: 'Affirmation', es: 'Afirmación' },
-  'modal.locator': { en: 'Source URL / locator', it: 'URL / localizzatore fonte', de: 'Quellen-URL', fr: 'URL source', es: 'URL fuente' },
-  'modal.confidence': { en: 'Confidence (0-1)', it: 'Confidenza (0-1)', de: 'Konfidenz (0-1)', fr: 'Confiance (0-1)', es: 'Confianza (0-1)' },
-  'modal.status': { en: 'Status', it: 'Stato', de: 'Status', fr: 'Statut', es: 'Estado' },
-  'modal.name': { en: 'Name', it: 'Nome', de: 'Name', fr: 'Nom', es: 'Nombre' },
-  'modal.type': { en: 'Type', it: 'Tipo', de: 'Typ', fr: 'Type', es: 'Tipo' },
-  'modal.statement': { en: 'Statement', it: 'Enunciato', de: 'Aussage', fr: 'Énoncé', es: 'Enunciado' },
-  'modal.falsifier': { en: 'Falsifier (what would prove this wrong?)', it: 'Falsificatore (cosa dimostrerebbe che è sbagliato?)', de: 'Falsifikator', fr: 'Falsificateur', es: 'Falsificador' },
-  'modal.from': { en: 'From entity', it: 'Da entità', de: 'Von Entität', fr: 'De l\'entité', es: 'Desde entidad' },
-  'modal.to': { en: 'To entity', it: 'A entità', de: 'Zu Entität', fr: 'Vers l\'entité', es: 'Hacia entidad' },
-  'alert.case.first': { en: 'Create or focus a case first.', it: 'Crea o focalizza prima un caso.', de: 'Zuerst Fall erstellen.', fr: 'Créez d\'abord un dossier.', es: 'Crea un caso primero.' },
-  'alert.title.required': { en: 'Title is required', it: 'Il titolo è obbligatorio', de: 'Titel erforderlich', fr: 'Titre obligatoire', es: 'Título obligatorio' },
-  'alert.name.required': { en: 'Name is required', it: 'Il nome è obbligatorio', de: 'Name erforderlich', fr: 'Nom obligatoire', es: 'Nombre obligatorio' },
-  'alert.claim.required': { en: 'Title and claim are required', it: 'Titolo e affermazione sono obbligatori', de: 'Titel und Behauptung erforderlich', fr: 'Titre et affirmation obligatoires', es: 'Título y afirmación obligatorios' },
-  'alert.statement.required': { en: 'Statement is required', it: 'L\'enunciato è obbligatorio', de: 'Aussage erforderlich', fr: 'Énoncé obligatoire', es: 'Enunciado obligatorio' },
-  'alert.entities.different': { en: 'Select two different entities', it: 'Seleziona due entità diverse', de: 'Zwei unterschiedliche Entitäten', fr: 'Deux entités différentes', es: 'Dos entidades diferentes' },
-  'priority.high': { en: 'High', it: 'Alta', de: 'Hoch', fr: 'Élevée', es: 'Alta' },
-  'priority.medium': { en: 'Medium', it: 'Media', de: 'Mittel', fr: 'Moyenne', es: 'Media' },
-  'priority.low': { en: 'Low', it: 'Bassa', de: 'Niedrig', fr: 'Faible', es: 'Baja' },
-  'verified': { en: 'Verified', it: 'Verificato', de: 'Verifiziert', fr: 'Vérifié', es: 'Verificado' },
-  'objective.pending': { en: 'Objective pending', it: 'Obiettivo in attesa', de: 'Ziel ausstehend', fr: 'Objectif en attente', es: 'Objetivo pendiente' },
-  'no.investigations': { en: 'No investigations yet.', it: 'Nessuna indagine ancora.', de: 'Noch keine Untersuchungen.', fr: 'Aucune enquête.', es: 'Sin investigaciones.' },
-  'principle': { en: 'Find the signal. Trace the evidence. Challenge the conclusion.', it: 'Trova il segnale. Traccia la prova. Contesta la conclusione.', de: 'Finde das Signal. Verfolge den Beweis. Hinterfrage die Schlussfolgerung.', fr: 'Trouvez le signal. Tracez la preuve. Contestez la conclusion.', es: 'Encuentra la señal. Rastrea la evidencia. Desafía la conclusión.' },
-  'footer': { en: 'OSINT Command Center · living local workspace · Bias Radar + Red Team Mode · AI remains epistemically bounded.', it: 'OSINT Command Center · workspace locale vivo · Bias Radar + Red Team Mode · l\'AI resta epistemicmente limitata.', de: 'OSINT Command Center · lebendiger Workspace · Bias-Radar + Red-Team.', fr: 'OSINT Command Center · espace local vivant · Radar de biais + Red Team.', es: 'OSINT Command Center · espacio local vivo · Radar de sesgo + Red Team.' },
-  'live.title': { en: 'Live public-source feeds', it: 'Feed pubblici in tempo reale', de: 'Live öffentliche Quellen', fr: 'Flux publics en direct', es: 'Feeds públicos en vivo' },
-  'live.principle': { en: 'ONLINE DATA ≠ VERIFIED EVIDENCE · Results stay RAW until human review.', it: 'DATI ONLINE ≠ PROVA VERIFICATA · I risultati restano RAW fino a revisione umana.', de: 'ONLINE-DATEN ≠ VERIFIZIERTER BEWEIS.', fr: 'DONNÉES EN LIGNE ≠ PREUVE VÉRIFIÉE.', es: 'DATOS EN LÍNEA ≠ EVIDENCIA VERIFICADA.' },
-  'live.search': { en: 'Search public sources…', it: 'Cerca fonti pubbliche…', de: 'Öffentliche Quellen suchen…', fr: 'Rechercher des sources publiques…', es: 'Buscar fuentes públicas…' },
-  'live.run': { en: 'Fetch live', it: 'Recupera live', de: 'Live abrufen', fr: 'Récupérer', es: 'Obtener en vivo' },
-  'live.promote': { en: 'Review → Evidence', it: 'Rivedi → Prova', de: 'Prüfen → Beweis', fr: 'Réviser → Preuve', es: 'Revisar → Evidencia' }
+const STORAGE_KEY='occ.locale.v3';
+const DICT={
+'nav.command':{en:'Command Center',de:'Kommandozentrale',it:'Centro di Comando',fr:'Centre de commandement',es:'Centro de mando',pt:'Centro de Comando',uk:'Центр командування',pl:'Centrum dowodzenia',tr:'Komuta Merkezi',ja:'コマンドセンター',ko:'커맨드 센터',zh:'指挥中心'},
+'nav.cases':{en:'Cases',de:'Fälle',it:'Casi',fr:'Dossiers',es:'Casos',pt:'Casos',uk:'Справи',pl:'Sprawy',tr:'Vakalar',ja:'案件',ko:'사건',zh:'案件'},
+'nav.evidence':{en:'Evidence',de:'Beweise',it:'Prove',fr:'Preuves',es:'Evidencias',pt:'Evidências',uk:'Докази',pl:'Dowody',tr:'Kanıtlar',ja:'証拠',ko:'증거',zh:'证据'},
+'nav.entities':{en:'Entities & Graph',de:'Entitäten & Graph',it:'Entità e Grafo',fr:'Entités & Graphe',es:'Entidades y grafo',pt:'Entidades e grafo',uk:'Сутності та граф',pl:'Encje i graf',tr:'Varlıklar ve Grafik',ja:'エンティティとグラフ',ko:'엔터티 및 그래프',zh:'实体与图谱'},
+'nav.hypotheses':{en:'Hypotheses',de:'Hypothesen',it:'Ipotesi',fr:'Hypothèses',es:'Hipótesis',pt:'Hipóteses',uk:'Гіпотези',pl:'Hipotezy',tr:'Hipotezler',ja:'仮説',ko:'가설',zh:'假设'},
+'nav.contradictions':{en:'Contradictions',de:'Widersprüche',it:'Contraddizioni',fr:'Contradictions',es:'Contradicciones',pt:'Contradições',uk:'Суперечності',pl:'Sprzeczności',tr:'Çelişkiler',ja:'矛盾',ko:'모순',zh:'矛盾'},
+'nav.reports':{en:'Reports',de:'Berichte',it:'Report',fr:'Rapports',es:'Informes',pt:'Relatórios',uk:'Звіти',pl:'Raporty',tr:'Raporlar',ja:'レポート',ko:'보고서',zh:'报告'},
+'nav.governance':{en:'Governance',de:'Governance',it:'Governance',fr:'Gouvernance',es:'Gobernanza',pt:'Governança',uk:'Управління',pl:'Nadzór',tr:'Yönetişim',ja:'ガバナンス',ko:'거버넌스',zh:'治理'},
+'brand.living':{en:'LIVING ANALYST COCKPIT',de:'LEBENDIGES ANALYSTEN-COCKPIT',it:'COCKPIT ANALISTA VIVO',fr:'COCKPIT ANALYSTE VIVANT',es:'COCKPIT ANALISTA VIVO',pt:'COCKPIT DE ANALISTA VIVO',uk:'ЖИВИЙ АНАЛІТИЧНИЙ КОКПІТ',pl:'ŻYWY KOKPIT ANALITYKA',tr:'CANLI ANALİST KOKPİTİ',ja:'ライブ分析コックピット',ko:'실시간 분석가 콕핏',zh:'实时分析驾驶舱'},
+'search.placeholder':{en:'Search the workspace…',de:'Workspace durchsuchen…',it:'Cerca nel workspace…',fr:'Rechercher…',es:'Buscar…',pt:'Pesquisar no workspace…',uk:'Пошук у робочому просторі…',pl:'Szukaj w obszarze roboczym…',tr:'Çalışma alanında ara…',ja:'ワークスペースを検索…',ko:'워크스페이스 검색…',zh:'搜索工作区…'},
+'focus.none':{en:'No active case',de:'Kein aktiver Fall',it:'Nessun caso attivo',fr:'Aucun dossier actif',es:'Ningún caso activo',pt:'Nenhum caso ativo',uk:'Немає активної справи',pl:'Brak aktywnej sprawy',tr:'Etkin vaka yok',ja:'アクティブな案件なし',ko:'활성 사건 없음',zh:'没有活动案件'},
+'focus.clear':{en:'Clear focus',de:'Fokus aufheben',it:'Rimuovi focus',fr:'Effacer le focus',es:'Quitar enfoque',pt:'Limpar foco',uk:'Очистити фокус',pl:'Wyczyść fokus',tr:'Odağı temizle',ja:'フォーカス解除',ko:'포커스 해제',zh:'清除焦点'},
+'focus.new':{en:'+ New case',de:'+ Neuer Fall',it:'+ Nuovo caso',fr:'+ Nouveau dossier',es:'+ Nuevo caso',pt:'+ Novo caso',uk:'+ Нова справа',pl:'+ Nowa sprawa',tr:'+ Yeni vaka',ja:'+ 新規案件',ko:'+ 새 사건',zh:'+ 新建案件'},
+'focus.create':{en:'+ New investigation',de:'+ Neue Untersuchung',it:'+ Nuova indagine',fr:'+ Nouvelle enquête',es:'+ Nueva investigación',pt:'+ Nova investigação',uk:'+ Нове розслідування',pl:'+ Nowe dochodzenie',tr:'+ Yeni soruşturma',ja:'+ 新規調査',ko:'+ 새 조사',zh:'+ 新建调查'},
+'action.new.investigation':{en:'+ New investigation',de:'+ Neue Untersuchung',it:'+ Nuova indagine',fr:'+ Nouvelle enquête',es:'+ Nueva investigación',pt:'+ Nova investigação',uk:'+ Нове розслідування',pl:'+ Nowe dochodzenie',tr:'+ Yeni soruşturma',ja:'+ 新規調査',ko:'+ 새 조사',zh:'+ 新建调查'},
+'action.new.evidence':{en:'+ Add evidence',de:'+ Beweis hinzufügen',it:'+ Aggiungi prova',fr:'+ Ajouter une preuve',es:'+ Añadir evidencia',pt:'+ Adicionar evidência',uk:'+ Додати доказ',pl:'+ Dodaj dowód',tr:'+ Kanıt ekle',ja:'+ 証拠を追加',ko:'+ 증거 추가',zh:'+ 添加证据'},
+'action.new.entity':{en:'+ Entity',de:'+ Entität',it:'+ Entità',fr:'+ Entité',es:'+ Entidad',pt:'+ Entidade',uk:'+ Сутність',pl:'+ Encja',tr:'+ Varlık',ja:'+ エンティティ',ko:'+ 엔터티',zh:'+ 实体'},
+'action.new.hypothesis':{en:'+ Add hypothesis',de:'+ Hypothese hinzufügen',it:'+ Aggiungi ipotesi',fr:'+ Ajouter une hypothèse',es:'+ Añadir hipótesis',pt:'+ Adicionar hipótese',uk:'+ Додати гіпотезу',pl:'+ Dodaj hipotezę',tr:'+ Hipotez ekle',ja:'+ 仮説を追加',ko:'+ 가설 추가',zh:'+ 添加假设'},
+'action.new.relationship':{en:'+ Relationship',de:'+ Beziehung',it:'+ Relazione',fr:'+ Relation',es:'+ Relación',pt:'+ Relação',uk:'+ Зв’язок',pl:'+ Relacja',tr:'+ İlişki',ja:'+ 関係',ko:'+ 관계',zh:'+ 关系'},
+'action.triage':{en:'Run contradiction triage',de:'Widerspruchs-Triage',it:'Esegui triage contraddizioni',fr:'Triage des contradictions',es:'Triage de contradicciones',pt:'Triagem de contradições',uk:'Тріаж суперечностей',pl:'Triage sprzeczności',tr:'Çelişki triyajı',ja:'矛盾トリアージ',ko:'모순 트리아지',zh:'矛盾分诊'},
+'action.report':{en:'Create professional report',de:'Professionellen Bericht erstellen',it:'Crea report professionale',fr:'Créer un rapport professionnel',es:'Crear informe profesional',pt:'Criar relatório profissional',uk:'Створити професійний звіт',pl:'Utwórz raport profesjonalny',tr:'Profesyonel rapor oluştur',ja:'専門レポートを作成',ko:'전문 보고서 생성',zh:'创建专业报告'},
+'modal.cancel':{en:'Cancel',de:'Abbrechen',it:'Annulla',fr:'Annuler',es:'Cancelar',pt:'Cancelar',uk:'Скасувати',pl:'Anuluj',tr:'İptal',ja:'キャンセル',ko:'취소',zh:'取消'},
+'modal.create':{en:'Create',de:'Erstellen',it:'Crea',fr:'Créer',es:'Crear',pt:'Criar',uk:'Створити',pl:'Utwórz',tr:'Oluştur',ja:'作成',ko:'생성',zh:'创建'},
+'live.title':{en:'Live public-source feeds',de:'Live-öffentliche Quellen',it:'Feed pubblici in tempo reale',fr:'Flux publics en direct',es:'Feeds públicos en vivo',pt:'Fontes públicas ao vivo',uk:'Публічні джерела наживо',pl:'Źródła publiczne na żywo',tr:'Canlı açık kaynak akışları',ja:'公開ソースのライブフィード',ko:'실시간 공개 소스 피드',zh:'实时公开来源'},
+'live.principle':{en:'ONLINE DATA ≠ VERIFIED EVIDENCE · Results stay RAW until human review.',de:'ONLINE-DATEN ≠ VERIFIZIERTER BEWEIS · Ergebnisse bleiben RAW bis zur Prüfung.',it:'DATI ONLINE ≠ PROVA VERIFICATA · I risultati restano RAW fino a revisione umana.',fr:'DONNÉES EN LIGNE ≠ PREUVE VÉRIFIÉE · Les résultats restent bruts jusqu’à vérification.',es:'DATOS EN LÍNEA ≠ EVIDENCIA VERIFICADA · Los resultados siguen en bruto hasta revisión.',pt:'DADOS ONLINE ≠ EVIDÊNCIA VERIFICADA · Os resultados permanecem brutos até revisão.',uk:'ОНЛАЙН-ДАНІ ≠ ПЕРЕВІРЕНИЙ ДОКАЗ · Результати залишаються сирими до перевірки.',pl:'DANE ONLINE ≠ ZWERYFIKOWANY DOWÓD · Wyniki pozostają surowe do weryfikacji.',tr:'ÇEVRİMİÇİ VERİ ≠ DOĞRULANMIŞ KANIT · Sonuçlar incelemeye kadar HAM kalır.',ja:'オンラインデータ ≠ 検証済み証拠 · 結果は人手確認までRAWのままです。',ko:'온라인 데이터 ≠ 검증된 증거 · 결과는 사람의 검토 전까지 RAW로 유지됩니다.',zh:'在线数据 ≠ 已验证证据 · 结果在人工审查前保持原始状态。'}
 };
-
-/** Free-text legacy map for older labels */
-const FREE = {
-  Cases: { en: 'Cases', it: 'Casi', de: 'Fälle', fr: 'Dossiers', es: 'Casos' },
-  Evidence: { en: 'Evidence', it: 'Prove', de: 'Beweise', fr: 'Preuves', es: 'Evidencias' }
-};
-
-export function supportedLocales() { return Object.keys(SUPPORTED_LOCALES); }
-
-export function getLocale(storage = globalThis.localStorage) {
-  try {
-    const saved = storage?.getItem(STORAGE_KEY);
-    if (saved && SUPPORTED_LOCALES[saved]) return saved;
-  } catch {}
-  const browser = (typeof navigator !== 'undefined' ? (navigator.language || '') : '').toLowerCase().split('-')[0];
-  if (SUPPORTED_LOCALES[browser]) return browser;
-  return 'en';
-}
-
-export function t(key, locale = getLocale()) {
-  const entry = DICT[key];
-  if (!entry) return key;
-  return entry[locale] || entry.en || key;
-}
-
-/** Legacy free-text translator used by older tests/UI */
-export function translate(value, locale = getLocale()) {
-  const text = String(value ?? '');
-  if (locale === 'en') return text;
-  if (FREE[text]?.[locale]) return FREE[text][locale];
-  // Try reverse-lookup of known dictionary English values
-  for (const [key, entry] of Object.entries(DICT)) {
-    if (entry.en === text && entry[locale]) return entry[locale];
-  }
-  return text;
-}
-
-export function setLocale(locale, storage = globalThis.localStorage) {
-  if (!SUPPORTED_LOCALES[locale]) throw new Error(`Unsupported locale: ${locale}`);
-  try { storage?.setItem(STORAGE_KEY, locale); } catch {}
-  if (typeof document !== 'undefined') {
-    document.documentElement.lang = locale;
-    document.documentElement.dir = SUPPORTED_LOCALES[locale].dir || 'ltr';
-    document.dispatchEvent(new CustomEvent('occ:locale', { detail: { locale } }));
-  }
-  return locale;
-}
-
-export function installLanguageSelector() {
-  if (typeof document === 'undefined') return;
-  let wrap = document.getElementById('languageControl');
-  if (wrap) {
-    const select = document.getElementById('localeSelect');
-    if (select) select.value = getLocale();
-    return;
-  }
-  const host = document.querySelector('.status') || document.querySelector('.top') || document.body;
-  if (!host) return;
-  wrap = document.createElement('div');
-  wrap.id = 'languageControl';
-  wrap.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:6px 10px;border:1px solid #69d7d0;border-radius:999px;background:#071318;font:12px/1 system-ui,sans-serif;z-index:50;min-height:36px';
-  const icon = document.createElement('span');
-  icon.textContent = '🌐';
-  icon.style.fontSize = '16px';
-  const select = document.createElement('select');
-  select.id = 'localeSelect';
-  select.style.cssText = 'appearance:auto;background:#071318;color:#e9f4f4;border:0;outline:0;border-radius:5px;padding:4px 20px 4px 2px;font-size:13px;font-weight:700;min-width:96px;min-height:32px;cursor:pointer';
-  for (const code of supportedLocales()) {
-    const o = document.createElement('option');
-    o.value = code;
-    o.textContent = SUPPORTED_LOCALES[code].native;
-    select.appendChild(o);
-  }
-  select.value = getLocale();
-  select.addEventListener('change', () => {
-    setLocale(select.value);
-    window.dispatchEvent(new CustomEvent('occ:re-render'));
-  });
-  wrap.append(icon, select);
-  host.appendChild(wrap);
-}
-
-export function bootI18n() {
-  if (typeof document === 'undefined') return;
-  document.documentElement.lang = getLocale();
-  installLanguageSelector();
-  document.addEventListener('occ:locale', () => installLanguageSelector());
-}
+const FREE={};
+export function supportedLocales(){return Object.keys(SUPPORTED_LOCALES);}
+export function getLocale(storage=globalThis.localStorage){try{const saved=storage?.getItem(STORAGE_KEY);if(saved&&SUPPORTED_LOCALES[saved])return saved;}catch{}const browser=(typeof navigator!=='undefined'?(navigator.language||''):'').toLowerCase().split('-')[0];return SUPPORTED_LOCALES[browser]?browser:'en';}
+export function t(key,locale=getLocale()){const entry=DICT[key];return entry?(entry[locale]||entry.en||key):key;}
+export function translate(value,locale=getLocale()){const text=String(value??'');if(locale==='en')return text;if(FREE[text]?.[locale])return FREE[text][locale];for(const entry of Object.values(DICT)){if(entry.en===text&&entry[locale])return entry[locale];}return text;}
+export function setLocale(locale,storage=globalThis.localStorage){if(!SUPPORTED_LOCALES[locale])throw new Error(`Unsupported locale: ${locale}`);try{storage?.setItem(STORAGE_KEY,locale);}catch{}if(typeof document!=='undefined'){document.documentElement.lang=locale;document.documentElement.dir=SUPPORTED_LOCALES[locale].dir||'ltr';document.dispatchEvent(new CustomEvent('occ:locale',{detail:{locale}}));}return locale;}
+export function installLanguageSelector(){if(typeof document==='undefined')return;let wrap=document.getElementById('languageControl');if(wrap){const select=document.getElementById('localeSelect');if(select)select.value=getLocale();return;}const host=document.querySelector('.status')||document.querySelector('.top')||document.body;if(!host)return;wrap=document.createElement('div');wrap.id='languageControl';wrap.style.cssText='display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:6px 10px;border:1px solid #69d7d0;border-radius:999px;background:#071318;font:12px/1 system-ui,sans-serif;z-index:50;min-height:36px';const icon=document.createElement('span');icon.textContent='🌐';icon.style.fontSize='16px';const select=document.createElement('select');select.id='localeSelect';select.setAttribute('aria-label','Interface language');select.style.cssText='appearance:auto;background:#071318;color:#e9f4f4;border:0;outline:0;border-radius:5px;padding:4px 20px 4px 2px;font-size:13px;font-weight:700;min-width:96px;min-height:32px;cursor:pointer';for(const code of supportedLocales()){const o=document.createElement('option');o.value=code;o.textContent=SUPPORTED_LOCALES[code].native;select.appendChild(o);}select.value=getLocale();select.addEventListener('change',()=>{setLocale(select.value);window.dispatchEvent(new CustomEvent('occ:re-render'));});wrap.append(icon,select);host.appendChild(wrap);}
+export function bootI18n(){if(typeof document==='undefined')return;document.documentElement.lang=getLocale();installLanguageSelector();document.addEventListener('occ:locale',()=>installLanguageSelector());}
