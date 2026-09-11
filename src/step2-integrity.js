@@ -1,6 +1,7 @@
 import { loadState, updateRecord, addRecord, getActiveCaseId } from './core/store.js';
 import { createDecision } from './core/model.js';
 import { evaluateDecision, transitionDecision } from './core/decision.js';
+import { computeBiasRadar, buildRedTeamPressure } from './core/bias-radar.js';
 
 const $ = id => document.getElementById(id);
 const esc = v => String(v ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[c]));
@@ -19,15 +20,14 @@ function decorateHypotheses(s, caseId) {
   });
 }
 
-function decorateRelationships(s, caseId) {
+function renderRelationships(s, caseId) {
   const root = $('entitiesList'); if (!root) return;
-  root.querySelectorAll('.step2-rel-controls').forEach(x => x.remove());
-  root.querySelectorAll('.relationship-list > .row').forEach((row, i) => {
-    const relationships = (s.relationships || []).filter(x => !caseId || x.caseId === caseId), rel = relationships[i]; if (!rel) return;
-    const box = document.createElement('div'); box.className = 'step2-rel-controls actions';
-    box.innerHTML = `<select aria-label="Evidence for relationship" class="step2-rel-evidence"><option value="">Link evidence…</option>${evidenceOptions(s, caseId)}</select><button class="button" data-step2-rel="link">Attach</button>`;
-    box.dataset.relationshipId = rel.id; row.appendChild(box);
-  });
+  root.querySelectorAll('.step2-relationship-panel').forEach(x => x.remove());
+  const relationships = (s.relationships || []).filter(r => !caseId || r.caseId === caseId);
+  const entities = new Map((s.entities || []).map(e => [e.id, e.name]));
+  const panel = document.createElement('section'); panel.className = 'step2-relationship-panel card';
+  panel.innerHTML = `<div class="row-head"><div><span class="ey">RELATIONSHIP EVIDENCE</span><strong>Evidence-backed links</strong><small>Every relationship can be challenged or strengthened by explicit evidence.</small></div><span class="tag">${relationships.length} LINKS</span></div><div class="relationship-list">${relationships.map(r => { const from = entities.get(r.fromEntityId) || 'Unknown'; const to = entities.get(r.toEntityId) || 'Unknown'; return `<div class="row" data-relationship-row="${esc(r.id)}"><div><strong>${esc(from)} → ${esc(r.type)} → ${esc(to)}</strong><small>${(r.evidenceIds || []).length} evidence · confidence ${Math.round((Number(r.confidence) || 0) * 100)}% · ${esc(r.status || 'UNTESTED')}</small></div><div class="step2-rel-controls actions" data-relationship-id="${esc(r.id)}"><select aria-label="Evidence for relationship" class="step2-rel-evidence"><option value="">Link evidence…</option>${evidenceOptions(s, caseId)}</select><button class="button" data-step2-rel="link">Attach</button></div></div>`; }).join('') || '<div class="row"><small>No relationships recorded yet. Create one above.</small></div>'}</div>`;
+  root.appendChild(panel);
 }
 
 function renderDecisionGate() {
@@ -38,7 +38,9 @@ function renderDecisionGate() {
   const decisions = (s.decisions || []).filter(d => d.caseId === caseId), latest = decisions.at(-1), evaluation = latest ? evaluateDecision(latest, s) : null;
   const hypotheses = (s.hypotheses || []).filter(h => h.caseId === caseId);
   const selected = new Set(latest?.linkedHypothesisIds || []);
-  panel.innerHTML = `<div class="row-head"><div><span class="ey">DECISION INTEGRITY GATE</span><strong>${latest ? esc(latest.title) : 'No decision recorded'}</strong><small>${latest ? `${esc(evaluation.status)} · ${evaluation.score}/100 · ${evaluation.blockingReasons.length} blocker(s) · ${evaluation.warnings.length} warning(s)` : 'Build a decision only from explicit hypotheses, evidence, falsifiers and contradiction review.'}</small></div><span class="tag ${!evaluation ? 'warn' : evaluation.status === 'PASS' ? 'ok' : evaluation.status === 'REVIEW' ? 'warn' : 'bad'}">${evaluation?.status || 'STANDBY'}</span></div><div class="step2-decision-form"><input id="step2DecisionTitle" maxlength="160" placeholder="Decision title"><textarea id="step2DecisionStatement" rows="2" maxlength="500" placeholder="Decision statement"></textarea><input id="step2DecisionRationale" maxlength="500" placeholder="Rationale / uncertainty"><input id="step2DecisionRisk" maxlength="500" placeholder="Residual risk acceptance"><label class="step2-hypothesis-picker">Linked hypotheses<select id="step2DecisionHypotheses" multiple size="${Math.min(5, Math.max(2, hypotheses.length || 2))}">${hypotheses.map(h => `<option value="${esc(h.id)}" ${selected.has(h.id) ? 'selected' : ''}>${esc(h.statement.slice(0,100))}</option>`).join('')}</select></label><button class="button primary" id="step2CreateDecision">${latest ? 'Update decision checkpoint' : 'Create decision checkpoint'}</button>${latest ? '<button class="button" id="step2ApproveDecision">Attempt approval</button>' : ''}</div>${latest && evaluation.blockingReasons.length ? `<div class="step2-blockers"><strong>BLOCKERS</strong>${evaluation.blockingReasons.slice(0,8).map(x => `<small>• ${esc(x)}</small>`).join('')}</div>` : ''}${latest && evaluation.warnings.length ? `<div class="step2-blockers"><strong>WARNINGS</strong>${evaluation.warnings.slice(0,8).map(x => `<small>• ${esc(x)}</small>`).join('')}</div>` : ''}`;
+  const radar = computeBiasRadar(s);
+  const pressure = buildRedTeamPressure(s);
+  panel.innerHTML = `<div class="row-head"><div><span class="ey">DECISION INTEGRITY GATE</span><strong>${latest ? esc(latest.title) : 'No decision recorded'}</strong><small>${latest ? `${esc(evaluation.status)} · ${evaluation.score}/100 · ${evaluation.blockingReasons.length} blocker(s) · ${evaluation.warnings.length} warning(s)` : 'Build a decision only from explicit hypotheses, evidence, falsifiers and contradiction review.'}</small></div><span class="tag ${!evaluation ? 'warn' : evaluation.status === 'PASS' ? 'ok' : evaluation.status === 'REVIEW' ? 'warn' : 'bad'}">${evaluation?.status || 'STANDBY'}</span></div><div class="signal-board step2-risk-strip"><div class="signal-cell"><span class="ey">BIAS PRESSURE</span><strong>${radar.biasIndex}</strong><small>${esc(radar.level)}</small></div><div class="signal-cell"><span class="ey">OPEN CONTRADICTIONS</span><strong>${(s.contradictions || []).filter(c => !caseId || c.caseId === caseId).length}</strong><small>Must be reviewed before confidence hardens.</small></div><div class="signal-cell"><span class="ey">RED TEAM PRESSURE</span><strong>${pressure.highCount}</strong><small>${pressure.count} challenge signals</small></div></div><div class="step2-decision-form"><input id="step2DecisionTitle" maxlength="160" placeholder="Decision title"><textarea id="step2DecisionStatement" rows="2" maxlength="500" placeholder="Decision statement"></textarea><input id="step2DecisionRationale" maxlength="500" placeholder="Rationale / uncertainty"><input id="step2DecisionRisk" maxlength="500" placeholder="Residual risk acceptance"><label class="step2-hypothesis-picker">Linked hypotheses<select id="step2DecisionHypotheses" multiple size="${Math.min(5, Math.max(2, hypotheses.length || 2))}">${hypotheses.map(h => `<option value="${esc(h.id)}" ${selected.has(h.id) ? 'selected' : ''}>${esc(h.statement.slice(0,100))}</option>`).join('')}</select></label><button class="button primary" id="step2CreateDecision">${latest ? 'Update decision checkpoint' : 'Create decision checkpoint'}</button>${latest ? '<button class="button" id="step2ApproveDecision">Attempt approval</button>' : ''}</div>${latest && evaluation.blockingReasons.length ? `<div class="step2-blockers"><strong>BLOCKERS</strong>${evaluation.blockingReasons.slice(0,8).map(x => `<small>• ${esc(x)}</small>`).join('')}</div>` : ''}${latest && evaluation.warnings.length ? `<div class="step2-blockers"><strong>WARNINGS</strong>${evaluation.warnings.slice(0,8).map(x => `<small>• ${esc(x)}</small>`).join('')}</div>` : ''}`;
   $('step2CreateDecision')?.addEventListener('click', () => {
     const title = $('step2DecisionTitle')?.value.trim(), statement = $('step2DecisionStatement')?.value.trim(), rationale = $('step2DecisionRationale')?.value.trim(), riskAcceptance = $('step2DecisionRisk')?.value.trim();
     const linkedHypothesisIds = [...($('step2DecisionHypotheses')?.selectedOptions || [])].map(o => o.value);
@@ -65,11 +67,11 @@ function handleClick(e) {
   }
   const attach = e.target.closest('[data-step2-rel="link"]');
   if (attach) {
-    const box = attach.closest('.step2-rel-controls'), evidenceId = box?.querySelector('.step2-rel-evidence')?.value, relationshipId = box?.dataset.relationshipId; if (!evidenceId || !relationshipId) return;
+    const box = attach.closest('.step2-rel-controls'), evidenceId = box?.querySelector('.step2-rel-evidence')?.value, relationshipId = box?.dataset.relationshipId || box?.closest('[data-relationship-row]')?.dataset.relationshipRow; if (!evidenceId || !relationshipId) return;
     const s = loadState(), r = (s.relationships || []).find(x => x.id === relationshipId); if (!r) return;
-    updateRecord('relationships', relationshipId, { evidenceIds: Array.from(new Set([...(r.evidenceIds || []), evidenceId])), status: 'INFERENCE' }); window.dispatchEvent(new Event('occ:re-render'));
+    updateRecord('relationships', relationshipId, { evidenceIds: Array.from(new Set([...(r.evidenceIds || []), evidenceId])), status: 'INFERENCE', updatedAt: new Date().toISOString() }); window.dispatchEvent(new Event('occ:re-render'));
   }
 }
 
-function refresh() { const { s, caseId } = activeState(); decorateHypotheses(s, caseId); decorateRelationships(s, caseId); renderDecisionGate(); }
+function refresh() { const { s, caseId } = activeState(); decorateHypotheses(s, caseId); renderRelationships(s, caseId); renderDecisionGate(); }
 if (typeof document !== 'undefined') { document.addEventListener('click', handleClick); const boot = () => { refresh(); window.addEventListener('occ:re-render', refresh); }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot(); }
