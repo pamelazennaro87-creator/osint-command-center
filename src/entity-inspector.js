@@ -80,7 +80,7 @@ if (!window.__occEntityInspector) {
   document.head.appendChild(style);
 
   const esc = v => String(v ?? '').replace(/[&<>\"']/g, c =>
-    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[c]));
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 
   const panel = document.createElement('aside');
   panel.className = 'occ-inspector';
