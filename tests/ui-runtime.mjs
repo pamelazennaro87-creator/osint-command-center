@@ -12,6 +12,7 @@ let server;
 let browser;
 let profile;
 let ws;
+let cdpSessionId = null;
 let browserStderr = '';
 let nextId = 1;
 const pending = new Map();
@@ -29,9 +30,11 @@ async function waitFor(fn, timeout = 10000, interval = 100) {
   throw new Error(`Timed out waiting for condition. Browser stderr: ${browserStderr.slice(-4000)}`);
 }
 
-async function cdp(method, params = {}) {
+async function cdp(method, params = {}, sessionId = cdpSessionId) {
   const id = nextId++;
-  ws.send(JSON.stringify({ id, method, params }));
+  const message = { id, method, params };
+  if (sessionId) message.sessionId = sessionId;
+  ws.send(JSON.stringify(message));
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });
     setTimeout(() => {
@@ -64,6 +67,42 @@ function findBrowser() {
   throw new Error('No Chromium-compatible browser executable found.');
 }
 
+async function connectBrowserDebugger() {
+  const version = await waitFor(async () => {
+    if (browser.exitCode !== null) throw new Error(`Browser exited with code ${browser.exitCode}.`);
+    try {
+      const value = await browserFetch(`http://127.0.0.1:${CDP_PORT}/json/version`);
+      return value.webSocketDebuggerUrl ? value : false;
+    } catch { return false; }
+  }, 30000);
+
+  ws = new WebSocket(version.webSocketDebuggerUrl);
+  await new Promise((resolve, reject) => {
+    ws.addEventListener('open', resolve, { once: true });
+    ws.addEventListener('error', reject, { once: true });
+  });
+  ws.addEventListener('message', event => {
+    const message = JSON.parse(event.data);
+    if (message.method === 'Runtime.exceptionThrown') runtimeErrors.push(message.params.exceptionDetails);
+    if (message.id && pending.has(message.id)) {
+      const item = pending.get(message.id);
+      pending.delete(message.id);
+      if (message.error) item.reject(new Error(message.error.message));
+      else item.resolve(message.result);
+    }
+  });
+
+  const targets = await cdp('Target.getTargets', {}, null);
+  let target = targets.targetInfos.find(item => item.type === 'page');
+  if (!target) {
+    const created = await cdp('Target.createTarget', { url: 'about:blank' }, null);
+    target = { targetId: created.targetId };
+  }
+
+  const attached = await cdp('Target.attachToTarget', { targetId: target.targetId, flatten: true }, null);
+  cdpSessionId = attached.sessionId;
+}
+
 async function boot() {
   profile = await mkdtemp(join(tmpdir(), 'occ-ui-'));
   server = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1', '--directory', ROOT], { stdio: 'ignore' });
@@ -91,38 +130,7 @@ async function boot() {
   ], { stdio: ['ignore', 'ignore', 'pipe'] });
   browser.stderr.on('data', chunk => { browserStderr += chunk.toString(); });
 
-  await waitFor(async () => {
-    if (browser.exitCode !== null) throw new Error(`Browser exited with code ${browser.exitCode}.`);
-    try {
-      const version = await browserFetch(`http://127.0.0.1:${CDP_PORT}/json/version`);
-      return Boolean(version.webSocketDebuggerUrl);
-    } catch { return false; }
-  }, 30000);
-
-  const target = await waitFor(async () => {
-    if (browser.exitCode !== null) throw new Error(`Browser exited with code ${browser.exitCode}.`);
-    try {
-      const pages = await browserFetch(`http://127.0.0.1:${CDP_PORT}/json/list`);
-      return pages.find(p => p.type === 'page');
-    } catch { return false; }
-  }, 30000);
-
-  ws = new WebSocket(target.webSocketDebuggerUrl);
-  await new Promise((resolve, reject) => {
-    ws.addEventListener('open', resolve, { once: true });
-    ws.addEventListener('error', reject, { once: true });
-  });
-  ws.addEventListener('message', event => {
-    const message = JSON.parse(event.data);
-    if (message.method === 'Runtime.exceptionThrown') runtimeErrors.push(message.params.exceptionDetails);
-    if (message.id && pending.has(message.id)) {
-      const item = pending.get(message.id);
-      pending.delete(message.id);
-      if (message.error) item.reject(new Error(message.error.message));
-      else item.resolve(message.result);
-    }
-  });
-
+  await connectBrowserDebugger();
   await cdp('Runtime.enable');
   await cdp('Page.enable');
   await cdp('Page.navigate', { url: `http://127.0.0.1:${PORT}/index.html` });
