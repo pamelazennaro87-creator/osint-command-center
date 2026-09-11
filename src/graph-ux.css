@@ -1,0 +1,49 @@
+/* Graph UX — investigative layer (UI only). Load after strategic-ui.css */
+
+.graph-empty.living{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;min-height:280px;padding:28px;text-align:center;color:#8aa0a6
+}
+.graph-empty.living strong{font-size:13px;color:#cfe8e6;letter-spacing:.02em}
+.graph-empty.living small{max-width:320px;line-height:1.45}
+
+.graph-legend.living{
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;
+  margin-top:10px;padding:8px 2px;font-size:9px;color:#7e9298;letter-spacing:.04em
+}
+.graph-legend .legend-item{display:inline-flex;align-items:center;gap:6px}
+.graph-legend .legend-hint{margin-left:auto;opacity:.75;font-family:ui-monospace,monospace}
+.graph-legend .swatch{
+  display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid #2a4a52
+}
+.graph-legend .swatch.node{background:#1a4a52;box-shadow:0 0 6px #62e6dc44}
+.graph-legend .swatch.edge-supported{background:#5fd4cb;border-radius:2px;height:3px;width:14px;border:none}
+.graph-legend .swatch.edge-unsupported{background:#c47a7e;border-radius:2px;height:3px;width:14px;border:none;opacity:.85}
+.graph-legend .swatch.edge-inferred{background:#9ec9d4;border-radius:2px;height:3px;width:14px;border:none;opacity:.9}
+
+.living-svg .edge{stroke-linecap:round;transition:stroke .15s ease,stroke-width .15s ease,opacity .15s ease}
+.living-svg .edge.supported{stroke:#5fd4cb;stroke-opacity:.85}
+.living-svg .edge.unsupported{stroke:#c47a7e;stroke-opacity:.7;stroke-dasharray:4 4}
+.living-svg .edge.inferred{stroke:#9ec9d4;stroke-opacity:.75;stroke-dasharray:2 6}
+.living-svg .edge.is-hovered{stroke-width:3.2px!important;stroke-opacity:1}
+.living-svg .edge.is-connected{stroke-opacity:1;stroke-width:2.4px}
+
+.living-svg .node{fill:url(#nodeGrad);stroke:#2a4a52;stroke-width:1.2;transition:stroke .15s ease,filter .15s ease}
+.living-svg .node-label{fill:#cfe8e6;font-size:9px;pointer-events:none;font-family:ui-monospace,monospace}
+.living-svg .living-node.is-selected .node{stroke:#9af5ee;stroke-width:2.4;filter:url(#glow)}
+.living-svg .living-node.is-neighbor .node{stroke:#62e6dc;stroke-width:1.8}
+.living-svg.is-focusing .living-node:not(.is-selected):not(.is-neighbor){opacity:.35}
+.living-svg.is-focusing .edge:not(.is-connected){opacity:.22}
+
+.graph-edge-tip{
+  position:fixed;z-index:900;padding:6px 9px;border-radius:8px;
+  background:#0a151b;border:1px solid #2a4a52;
+  font:10px ui-monospace,monospace;color:#cfe8e6;
+  pointer-events:none;opacity:0;transition:opacity .12s;
+  box-shadow:0 8px 24px rgba(0,0,0,.35)
+}
+.graph-edge-tip.open{opacity:1}
+
+/* Analytical status chips usable near the graph */
+.graph-status-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.graph-status-legend .tag{font-size:8px}
