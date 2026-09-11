@@ -1,31 +1,4 @@
 /* Mobile-only layer. strategic-ui.css is loaded by index.html before this file. */
-html, body { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
-button, .button, select, input, a { min-height: 44px; min-width: 44px; }
-.command-search { font-size: 16px !important; }
-@media (max-width: 900px) {
-  .shell { grid-template-columns: 1fr; padding-bottom: 72px; }
-  .side { position: sticky; top: 0; height: auto; z-index: 20; border-right: 0; border-bottom: 1px solid var(--ui-border); padding: 12px 12px 8px; backdrop-filter: blur(18px); }
-  .side .brand { font-size: 12px; }
-  .side .note { display: none; }
-  .nav { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin-top: 10px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .nav::-webkit-scrollbar { display: none; }
-  .nav button { flex: 0 0 auto; white-space: nowrap; padding: 12px 14px; font-size: 13px; border-radius: 999px; border: 1px solid var(--ui-border); background: var(--ui-surface-2); }
-  .nav button.active { background: var(--ui-accent); color: #041012; border-color: var(--ui-accent); box-shadow: 0 0 18px rgba(105,215,208,.16); }
-  .main { padding: 14px 12px 90px; }
-  .title { font-size: 22px; }
-  .status { margin-top: 10px; width: 100%; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-radius: 12px; padding: 10px 12px; }
-  #languageControl { margin-left: 0 !important; }
-  .metric, .section, .aside, .challenge, .wide, .signal-board, .next-actions, .focus-strip { grid-column: span 12 !important; }
-  .signal-board { grid-template-columns: 1fr !important; }
-  .bias-grid { grid-template-columns: 1fr 1fr !important; }
-  .challenge-grid, .report-grid { grid-template-columns: 1fr 1fr !important; }
-  .actions button, .button { flex: 1 1 auto; justify-content: center; text-align: center; }
-  .box { width: 100%; max-height: 90vh; overflow-y: auto; border-radius: 16px 16px 0 0; }
-  .modal.open { align-items: flex-end; padding: 0; }
-  .graph-canvas svg.living-svg { min-height: 220px; }
-}
-@media (max-width: 600px) {
-  .bias-grid, .challenge-grid, .report-grid { grid-template-columns: 1fr !important; }
-  .top { display: block; }
-  .super-toolbar { position: sticky; top: 0; z-index: 15; }
-}
+html,body{-webkit-text-size-adjust:100%;touch-action:manipulation}button,.button,select,input,a{min-height:44px;min-width:44px}.command-search{font-size:16px!important}
+@media(max-width:900px){.shell{grid-template-columns:1fr;padding-bottom:72px}.side{position:sticky;top:0;height:auto;z-index:20;border-right:0;border-bottom:1px solid var(--ui-border);padding:10px 12px 8px;background:rgba(5,10,14,.94);backdrop-filter:blur(22px)}.side .brand{font-size:12px}.side .note{display:none}.nav{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin-top:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}.nav button{flex:0 0 auto;white-space:nowrap;padding:10px 14px;font-size:12px;border-radius:999px;border:1px solid var(--ui-border);background:var(--ui-surface-2)}.nav button.active{background:var(--ui-accent);color:#041012;border-color:var(--ui-accent);box-shadow:0 0 18px rgba(98,230,220,.16)}.main{padding:14px 12px 90px}.title{font-size:22px}.status{margin-top:10px;width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-radius:12px;padding:10px 12px}#languageControl{margin-left:0!important}.metric,.section,.aside,.challenge,.wide,.signal-board,.next-actions,.focus-strip{grid-column:span 12!important}.signal-board{grid-template-columns:1fr!important}.bias-grid{grid-template-columns:1fr 1fr!important}.challenge-grid,.report-grid{grid-template-columns:1fr 1fr!important}.actions button,.button{flex:1 1 auto;justify-content:center;text-align:center}.box{width:100%;max-height:90vh;overflow-y:auto;border-radius:16px 16px 0 0}.modal.open{align-items:flex-end;padding:0}.graph-canvas svg.living-svg{min-height:220px}}
+@media(max-width:600px){.bias-grid,.challenge-grid,.report-grid{grid-template-columns:1fr!important}.top{display:block}.super-toolbar{position:sticky;top:0;z-index:15;background:rgba(5,8,11,.86);padding:5px 0 8px;backdrop-filter:blur(16px)}}
