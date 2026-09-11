@@ -1,7 +1,9 @@
 import { createAuditEvent } from './model.js';
-import { getPrivateStateKey } from './privacy.js';
+import { getAnonymousInstallationId, getPrivateStateKey } from './privacy.js';
 
 const LEGACY_KEY = 'osint-enterprise-state-v1';
+const HISTORY_PREFIX = 'osint-enterprise-history-v2:';
+const HISTORY_LIMIT = 10;
 
 const emptyState = () => ({
   cases: [],
@@ -16,7 +18,8 @@ const emptyState = () => ({
   meta: {
     activeCaseId: null,
     redTeamMode: false,
-    lastUpdated: null
+    lastUpdated: null,
+    revision: 0
   }
 });
 
@@ -27,7 +30,26 @@ function normalize(state) {
   for (const key of Object.keys(base)) {
     if (key !== 'meta' && !Array.isArray(merged[key])) merged[key] = [];
   }
+  merged.meta.revision = Number.isInteger(merged.meta.revision) && merged.meta.revision >= 0 ? merged.meta.revision : 0;
   return merged;
+}
+
+function historyKey() {
+  return `${HISTORY_PREFIX}${getAnonymousInstallationId()}`;
+}
+
+function appendHistory(previous) {
+  if (!previous) return;
+  try {
+    const key = historyKey();
+    const raw = localStorage.getItem(key);
+    const history = raw ? JSON.parse(raw) : [];
+    const next = Array.isArray(history) ? history : [];
+    next.push({ revision: Number(previous.meta?.revision || 0), savedAt: previous.meta?.lastUpdated || null, state: previous });
+    localStorage.setItem(key, JSON.stringify(next.slice(-HISTORY_LIMIT)));
+  } catch {
+    // Recovery history is best-effort; primary state remains authoritative for runtime.
+  }
 }
 
 export function loadState() {
@@ -35,13 +57,8 @@ export function loadState() {
     const key = getPrivateStateKey();
     const raw = localStorage.getItem(key);
     if (raw) return normalize(JSON.parse(raw));
-    const legacy = localStorage.getItem(LEGACY_KEY);
-    if (legacy) {
-      const migrated = normalize(JSON.parse(legacy));
-      localStorage.setItem(key, JSON.stringify(migrated));
-      localStorage.removeItem(LEGACY_KEY);
-      return migrated;
-    }
+    // Never auto-import the legacy global key: it has no installation ownership boundary.
+    // Keeping it untouched prevents accidental cross-installation data mixing.
     return emptyState();
   } catch {
     return emptyState();
@@ -49,10 +66,24 @@ export function loadState() {
 }
 
 export function saveState(state) {
+  const key = getPrivateStateKey();
+  const previousRaw = localStorage.getItem(key);
+  const previous = previousRaw ? normalize(JSON.parse(previousRaw)) : null;
   const next = normalize(state);
   next.meta.lastUpdated = new Date().toISOString();
-  localStorage.setItem(getPrivateStateKey(), JSON.stringify(next));
+  next.meta.revision = Number(previous?.meta?.revision || next.meta.revision || 0) + 1;
+  appendHistory(previous);
+  localStorage.setItem(key, JSON.stringify(next));
   return next;
+}
+
+export function getRecoveryHistory() {
+  try {
+    const raw = localStorage.getItem(historyKey());
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function addRecord(collection, record) {
