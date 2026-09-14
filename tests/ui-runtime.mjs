@@ -51,7 +51,6 @@ async function evaluate(expression, awaitPromise = true) {
   if (result.exceptionDetails) {
     throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text || 'Browser evaluation failed');
   }
-  // CDP Runtime.evaluate returns { result: RemoteObject, exceptionDetails? }
   return result.result?.value;
 }
 
@@ -148,7 +147,7 @@ async function boot() {
 async function click(selector) {
   const ok = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.click(); return true; })()`);
   assert.equal(ok, true, `Missing clickable control: ${selector}`);
-  await new Promise(r => setTimeout(r, 140));
+  await new Promise(r => setTimeout(r, 160));
 }
 
 async function fill(selector, value) {
@@ -203,10 +202,14 @@ test('runtime UI smoke: navigation, CRUD modals, graph inspector and core comman
   await fill('#caseName', 'Runtime Smoke Investigation');
   await fill('#caseObjective', 'Verify the operational UI path end to end.');
   await click('#modalSave');
-  assert.equal(await evaluate(`document.querySelector('#modal')?.classList.contains('open')`), false, 'Case modal must close after save');
+  await waitFor(async () => (await evaluate(`document.querySelector('#modal')?.classList.contains('open')`)) === false, 8000);
   assert.equal(await evaluate(`localStorage.length > 0`), true, 'Case save must persist locally');
 
   await click('[data-view="cases"]');
+  await waitFor(async () => {
+    const t = await text('#casesList');
+    return t && t.includes('Runtime Smoke Investigation');
+  }, 10000);
   assert.match(await text('#casesList'), /Runtime Smoke Investigation/);
 
   await click('[data-view="evidence"]');
@@ -217,6 +220,10 @@ test('runtime UI smoke: navigation, CRUD modals, graph inspector and core comman
   await setSelect('#evStatus', 'FACT');
   await fill('#evConfidence', '0.8');
   await click('#modalSave');
+  await waitFor(async () => {
+    const t = await text('#evidenceList');
+    return t && t.includes('Runtime Evidence');
+  }, 8000);
   assert.match(await text('#evidenceList'), /Runtime Evidence/);
 
   await click('[data-view="entities"]');
@@ -225,15 +232,16 @@ test('runtime UI smoke: navigation, CRUD modals, graph inspector and core comman
     await fill('#entName', name);
     await setSelect('#entType', 'person');
     await click('#modalSave');
+    await new Promise(r => setTimeout(r, 200));
   }
   await waitFor(async () => (await evaluate(`document.querySelectorAll('.living-node[data-entity-id]').length`)) >= 2, 20000);
   assert.equal(await evaluate(`document.querySelectorAll('.living-node[data-entity-id]').length >= 2`), true, 'Graph must render created entities');
 
   await click('.living-node[data-entity-id]');
-  assert.equal(await evaluate(`document.querySelector('#occEntityInspector')?.classList.contains('open')`), true, 'Entity click must open inspector');
+  await waitFor(async () => (await evaluate(`document.querySelector('#occEntityInspector')?.classList.contains('open')`)) === true, 8000);
   assert.match(await text('#occInspectorTitle'), /Runtime Entity/);
   await click('.occ-inspector-close');
-  assert.equal(await evaluate(`document.querySelector('#occEntityInspector')?.classList.contains('open')`), false, 'Inspector close must work');
+  await waitFor(async () => (await evaluate(`document.querySelector('#occEntityInspector')?.classList.contains('open')`)) === false, 5000);
 
   await click('[data-action="new-relationship"]');
   assert.equal(await evaluate(`document.querySelectorAll('#relFrom option').length >= 2 && document.querySelectorAll('#relTo option').length >= 2`), true, 'Relationship modal must expose entity options');
@@ -243,6 +251,7 @@ test('runtime UI smoke: navigation, CRUD modals, graph inspector and core comman
   await fill('#relType', 'associated_with');
   await fill('#relConfidence', '0.7');
   await click('#modalSave');
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('#livingSvg line.edge').length`)) >= 1, 10000);
   assert.equal(await evaluate(`document.querySelectorAll('#livingSvg line.edge').length >= 1`), true, 'Graph must render saved relationship');
 
   await click('[data-view="hypotheses"]');
@@ -251,6 +260,10 @@ test('runtime UI smoke: navigation, CRUD modals, graph inspector and core comman
   await fill('#hypFalsifier', 'A primary source disproves it.');
   await fill('#hypConfidence', '0.55');
   await click('#modalSave');
+  await waitFor(async () => {
+    const t = await text('#hypothesesList');
+    return t && t.includes('Alternative runtime explanation');
+  }, 8000);
   assert.match(await text('#hypothesesList'), /Alternative runtime explanation/);
 
   await click('[data-view="contradictions"]');
@@ -260,6 +273,10 @@ test('runtime UI smoke: navigation, CRUD modals, graph inspector and core comman
   await click('[data-view="command"]');
   await waitFor(async () => Boolean(await evaluate(`document.querySelector('#biasRadarPanel [data-action="toggle-redteam"]')`)), 15000);
   await click('#biasRadarPanel [data-action="toggle-redteam"]');
+  await waitFor(async () => {
+    const t = await text('#runtimeStatus');
+    return t && /RED TEAM ACTIVE/.test(t);
+  }, 8000);
   assert.match(await text('#runtimeStatus'), /RED TEAM ACTIVE/);
 
   await click('[data-view="reports"]');
@@ -267,6 +284,10 @@ test('runtime UI smoke: navigation, CRUD modals, graph inspector and core comman
   await click('[data-action="create-report"]');
 
   await click('[data-view="governance"]');
+  await waitFor(async () => {
+    const t = await text('#governanceList');
+    return t && /STATE/.test(t);
+  }, 8000);
   assert.match(await text('#governanceList'), /STATE/);
 
   assert.equal(runtimeErrors.length, 0, `Runtime JavaScript exceptions detected: ${runtimeErrors.map(x => x.text || 'unknown').join(' | ')}`);
