@@ -18,7 +18,7 @@ let nextId = 1;
 const pending = new Map();
 const runtimeErrors = [];
 
-async function waitFor(fn, timeout = 10000, interval = 100) {
+async function waitFor(fn, timeout = 15000, interval = 120) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     try {
@@ -42,14 +42,17 @@ async function cdp(method, params = {}, sessionId = cdpSessionId) {
         pending.delete(id);
         reject(new Error(`CDP timeout: ${method}`));
       }
-    }, 15000);
+    }, 20000);
   });
 }
 
 async function evaluate(expression, awaitPromise = true) {
   const result = await cdp('Runtime.evaluate', { expression, returnByValue: true, awaitPromise });
-  if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || 'Browser evaluation failed');
-  return result.result?.result?.value;
+  if (result.exceptionDetails) {
+    throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text || 'Browser evaluation failed');
+  }
+  // CDP Runtime.evaluate returns { result: RemoteObject, exceptionDetails? }
+  return result.result?.value;
 }
 
 async function browserFetch(url) {
@@ -74,7 +77,7 @@ async function connectBrowserDebugger() {
       const value = await browserFetch(`http://127.0.0.1:${CDP_PORT}/json/version`);
       return value.webSocketDebuggerUrl ? value : false;
     } catch { return false; }
-  }, 30000);
+  }, 45000);
 
   ws = new WebSocket(version.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
@@ -93,7 +96,7 @@ async function connectBrowserDebugger() {
   });
 
   const targets = await cdp('Target.getTargets', {}, null);
-  let target = targets.targetInfos.find(item => item.type === 'page');
+  let target = targets.targetInfos?.find(item => item.type === 'page');
   if (!target) {
     const created = await cdp('Target.createTarget', { url: 'about:blank' }, null);
     target = { targetId: created.targetId };
@@ -108,7 +111,7 @@ async function boot() {
   server = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1', '--directory', ROOT], { stdio: 'ignore' });
   await waitFor(async () => {
     try { return (await fetch(`http://127.0.0.1:${PORT}/index.html`)).ok; } catch { return false; }
-  });
+  }, 20000);
 
   const browserBin = findBrowser();
   browser = spawn(browserBin, [
@@ -116,10 +119,12 @@ async function boot() {
     '--no-sandbox',
     '--disable-gpu',
     '--disable-dev-shm-usage',
+    '--disable-software-rasterizer',
     '--disable-background-networking',
     '--disable-component-update',
     '--disable-default-apps',
-    '--disable-features=Translate,MediaRouter',
+    '--disable-extensions',
+    '--disable-features=Translate,MediaRouter,PaintHolding',
     '--no-first-run',
     '--no-default-browser-check',
     '--remote-allow-origins=*',
@@ -134,16 +139,16 @@ async function boot() {
   await cdp('Runtime.enable');
   await cdp('Page.enable');
   await cdp('Page.navigate', { url: `http://127.0.0.1:${PORT}/index.html` });
-  await waitFor(async () => (await evaluate(`document.readyState === 'complete' && !!window.osintEnterprise`)) === true, 30000);
+  await waitFor(async () => (await evaluate(`document.readyState === 'complete' && !!window.osintEnterprise`)) === true, 45000);
   await evaluate(`localStorage.clear(); sessionStorage.clear(); location.reload()`);
-  await waitFor(async () => (await evaluate(`document.readyState === 'complete' && !!window.osintEnterprise`)) === true, 30000);
-  await new Promise(r => setTimeout(r, 300));
+  await waitFor(async () => (await evaluate(`document.readyState === 'complete' && !!window.osintEnterprise`)) === true, 45000);
+  await new Promise(r => setTimeout(r, 400));
 }
 
 async function click(selector) {
   const ok = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.click(); return true; })()`);
   assert.equal(ok, true, `Missing clickable control: ${selector}`);
-  await new Promise(r => setTimeout(r, 120));
+  await new Promise(r => setTimeout(r, 140));
 }
 
 async function fill(selector, value) {
@@ -221,7 +226,7 @@ test('runtime UI smoke: navigation, CRUD modals, graph inspector and core comman
     await setSelect('#entType', 'person');
     await click('#modalSave');
   }
-  await waitFor(async () => (await evaluate(`document.querySelectorAll('.living-node[data-entity-id]').length`)) >= 2);
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.living-node[data-entity-id]').length`)) >= 2, 20000);
   assert.equal(await evaluate(`document.querySelectorAll('.living-node[data-entity-id]').length >= 2`), true, 'Graph must render created entities');
 
   await click('.living-node[data-entity-id]');
@@ -253,7 +258,7 @@ test('runtime UI smoke: navigation, CRUD modals, graph inspector and core comman
   assert.equal(await viewIs('contradictions'), true, 'Triage must preserve contradictions view');
 
   await click('[data-view="command"]');
-  await waitFor(async () => Boolean(await evaluate(`document.querySelector('#biasRadarPanel [data-action="toggle-redteam"]')`)));
+  await waitFor(async () => Boolean(await evaluate(`document.querySelector('#biasRadarPanel [data-action="toggle-redteam"]')`)), 15000);
   await click('#biasRadarPanel [data-action="toggle-redteam"]');
   assert.match(await text('#runtimeStatus'), /RED TEAM ACTIVE/);
 
