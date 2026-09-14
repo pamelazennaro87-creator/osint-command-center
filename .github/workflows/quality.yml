@@ -46,6 +46,7 @@ jobs:
           test -f src/tools/forensic-bridge.js
           test -f src/visual-engine.js
           test -f src/app.js
+          test -f src/app-main.js
           test -f src/super-ui.js
           test -f manifest.webmanifest
           test -f src/graph-ux.css
