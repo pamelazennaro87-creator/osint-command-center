@@ -120,7 +120,7 @@ function showView(view) {
   });
   document.querySelectorAll('.nav button[data-view]').forEach(btn => {
     const key = { command: 'nav.command', cases: 'nav.cases', evidence: 'nav.evidence', entities: 'nav.entities', hypotheses: 'nav.hypotheses', contradictions: 'nav.contradictions', reports: 'nav.reports', governance: 'nav.governance' }[btn.dataset.view];
-    if (key) { const icon = btn.textContent.trim().split(' ')[0]; btn.textContent = `${icon} ${t(key)}`; }
+    if (key) btn.textContent = t(key);
   });
   if ($('pageTitle')) $('pageTitle').textContent = META[selected][0];
   if ($('pageSub')) $('pageSub').textContent = META[selected][1];
@@ -255,7 +255,10 @@ function runTriage() {
   return fresh;
 }
 function bind() {
-  document.querySelectorAll('.nav button[data-view]').forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
+  document.querySelector('.nav')?.addEventListener('click', e => {
+    const b = e.target.closest('button[data-view]');
+    if (b) showView(b.dataset.view);
+  });
   $('newCase')?.addEventListener('click', () => openModal('case'));
   $('modalClose')?.addEventListener('click', closeModal);
   $('modalCancel')?.addEventListener('click', closeModal);
