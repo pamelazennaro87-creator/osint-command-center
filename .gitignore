@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Env / secrets (never commit)
+.env
+.env.*
+!.env.example
+
+# Build / temp
+dist/
+build/
+tmp/
+*.tmp
