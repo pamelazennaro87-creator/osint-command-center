@@ -10,7 +10,7 @@ import { buildShadowInvestigation } from './core/drift.js';
 import { buildIntelligenceMatrix } from './core/intelligence.js';
 
 const $ = id => document.getElementById(id);
-const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&','<':'<','>':'>','"':'"',"'":'&#39;' }[c]));
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": '&#39;' }[c]));
 
 const TYPE_COLORS = {
   person: '#5fd4cb',
