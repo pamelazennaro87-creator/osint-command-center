@@ -27,6 +27,7 @@ jobs:
         run: |
           test -f index.html
           test -f README.md
+          test -f LICENSE
           test -f ARCHITECTURE.md
           test -f ENTERPRISE_READINESS.md
           test -f SECURITY.md
