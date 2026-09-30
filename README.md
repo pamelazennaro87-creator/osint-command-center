@@ -32,6 +32,43 @@ The **Analyst Challenge Layer** deliberately looks for reasoning drift, source d
 
 This is designed as an analyst tool, not an automated truth machine.
 
+## Portfolio
+
+This repository is part of an **evidence-first OSINT portfolio** focused on research quality, verification, analytical discipline and reproducibility.
+
+### Research approach
+
+I document investigations through a simple chain:
+
+**Question → Claims → Sources → Verification → Corroboration → Contradictions → Analysis → Confidence → Limitations**
+
+The objective is not to produce an impressive-looking answer. It is to make the reasoning inspectable and to show where the evidence is strong, weak, incomplete or disputed.
+
+### Selected portfolio work
+
+- **OSINT Command Center** — an evidence-first investigation workspace with contradiction triage, temporal checks, adversarial review, privacy controls and report generation.
+- **PixelLeak OSINT** — an international dataset documenting public evidence of AI-agent data exposure mechanisms while preserving the fingerprint rather than reproducing sensitive payloads.
+- **Independent OSINT research** — multilingual public-source research, identity and relationship verification, timeline reconstruction, geospatial analysis, source comparison and AI-assisted discovery with human verification.
+
+### What this portfolio demonstrates
+
+- Evidence handling and source provenance
+- Cross-source verification and contradiction analysis
+- Structured investigative reasoning
+- Timeline and relationship analysis
+- Geospatial and public-record research
+- AI-assisted research with human verification
+- Privacy-aware reporting and responsible disclosure
+- Clear separation between facts, assessments and unresolved questions
+
+### Professional principle
+
+> **No fake hacker persona. No invented access. No claims beyond the evidence.**
+>
+> The work should be understandable and auditable by another researcher.
+
+---
+
 ## Quick start
 
 1. Open the [live demo](https://pamelazennaro87-creator.github.io/osint-command-center/) or clone the repo and open `index.html` in a modern browser.
