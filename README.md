@@ -63,7 +63,7 @@ The objective is not to produce an impressive-looking answer. It is to make the 
 
 ### Professional principle
 
-> **No fake hacker persona. No invented access. No claims beyond the evidence.**
+> **No invented access. No claims beyond the evidence.**
 >
 > The work should be understandable and auditable by another researcher.
 
