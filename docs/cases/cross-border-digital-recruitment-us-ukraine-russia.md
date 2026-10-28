@@ -155,7 +155,7 @@ For each named person, group or company, store:
 2. **FBI**, “Foreign Virtual Targeting,” 24 June 2026.  
    https://www.fbi.gov/news/stories/foreign-virtual-targeting
 3. **SSU/SBU**, anti-recruitment public campaign, 4 August 2026.  
-   https://ssu.gov.ua/en/novyny/sbu-rozpochala-novu-khvylia-informatsiinoi-kampanii-z-protydii-verbuvanniu-ukraintsiv-fsb-stane-kym-zavhodno-shchob-ty-stav-zavradnykom
+   https://ssu.gov.ua/en/novyny/sbu-rozpochala-novu-khvylia-informatsiinoi-kampanii-z-protydii-verbuvanniu-ukraintsiv-fsb-stane-kym-zavhodno-shchob-ty-stav-zradnykom
 4. **U.S. DOJ**, Scam Center Strike Force actions, 23 April 2026.  
    https://www.justice.gov/opa/pr/scam-center-strike-force-takes-major-actions-against-southeast-asian-scam-centers-targeting
 5. **FBI IC3**, false job advertisements linked to labor trafficking, 22 May 2023.  
