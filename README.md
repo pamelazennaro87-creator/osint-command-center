@@ -32,9 +32,15 @@ The **Analyst Challenge Layer** deliberately looks for reasoning drift, source d
 
 This is designed as an analyst tool, not an automated truth machine.
 
+### Research signature
+
+**Do not ask only “What supports this hypothesis?” Ask “What would prove it wrong?”**
+
+Every investigation should make it possible to inspect the evidence trail, identify dependent sources, test temporal consistency, preserve contradictions, and leave unresolved claims unresolved. AI can help discover and structure leads; it does not replace source verification.
+
 ## Portfolio
 
-This repository is part of an **evidence-first OSINT portfolio** focused on research quality, verification, analytical discipline and reproducibility.
+This repository is the tooling hub for an **evidence-first OSINT portfolio** focused on research quality, verification, analytical discipline and reproducibility.
 
 ### Research approach
 
@@ -46,8 +52,11 @@ The objective is not to produce an impressive-looking answer. It is to make the 
 
 ### Selected portfolio work
 
-- **OSINT Command Center** — an evidence-first investigation workspace with contradiction triage, temporal checks, adversarial review, privacy controls and report generation.
-- **PixelLeak OSINT** — an international dataset documenting public evidence of AI-agent data exposure mechanisms while preserving the fingerprint rather than reproducing sensitive payloads.
+- **[OSINT Command Center](https://github.com/pamelazennaro87-creator/osint-command-center)** — an evidence-first investigation workspace with contradiction triage, temporal checks, adversarial review, privacy controls and report generation.
+- **[PixelLeak OSINT — public dataset](https://github.com/pamelazennaro87-creator/pixelleak-osint-public)** — an international, mechanism-focused dataset documenting public evidence of AI-agent data exposure while preserving fingerprints rather than reproducing sensitive payloads.
+- **[OSINT Signal Lab](https://github.com/pamelazennaro87-creator/osint-signal-lab-)** — case studies on source provenance, identity attribution, temporal context, uncertainty and analytical overreach.
+- **[Storm-0940 investigation](https://github.com/pamelazennaro87-creator/storm-0940-osint-investigation)** — a reproducible defensive threat-intelligence dossier with timelines, indicators, hunting queries, source dates and confidence boundaries.
+- **[OSINT Cyber Attacks 2026](https://github.com/pamelazennaro87-creator/OSINT-CyberAttacks-2026)** — cross-incident analysis of aviation, supply-chain and critical-infrastructure risks, including the Open Exposure Ledger proposal.
 - **Independent OSINT research** — multilingual public-source research, identity and relationship verification, timeline reconstruction, geospatial analysis, source comparison and AI-assisted discovery with human verification.
 
 ### What this portfolio demonstrates
@@ -143,13 +152,3 @@ Local investigation workflow, analytical guardrails, Bias Radar, Red Team Mode, 
 ## License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
-```
-MIT License
-
-Copyright (c) 2026 pamelazennaro87-creator
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction...
-```
