@@ -36,7 +36,9 @@ This is designed as an analyst tool, not an automated truth machine.
 
 **Do not ask only “What supports this hypothesis?” Ask “What would prove it wrong?”**
 
-Every investigation should make it possible to inspect the evidence trail, identify dependent sources, test temporal consistency, preserve contradictions, and leave unresolved claims unresolved. AI can help discover and structure leads; it does not replace source verification.\n\nUse the [Investigation Quality Gate](docs/INVESTIGATION-QUALITY-GATE.md) before publication: it checks claim traceability, source independence, temporal integrity, alternative hypotheses, AI-assisted leads, privacy risks and reproducibility.
+Every investigation should make it possible to inspect the evidence trail, identify dependent sources, test temporal consistency, preserve contradictions, and leave unresolved claims unresolved. AI can help discover and structure leads; it does not replace source verification.
+
+Use the [Investigation Quality Gate](docs/INVESTIGATION-QUALITY-GATE.md) before publication: it checks claim traceability, source independence, temporal integrity, alternative hypotheses, AI-assisted leads, privacy risks and reproducibility.
 
 ## Portfolio
 
